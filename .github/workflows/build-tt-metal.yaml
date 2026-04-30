@@ -11,6 +11,7 @@ on:
         type: choice
         options:
           - all
+          - linuxmint-22.3
           - linuxmint-22.2
           - linuxmint-22.1
           - linuxmint-21.3
@@ -41,7 +42,7 @@ jobs:
         run: |
           set -eu
           if [ -z "${TARGET_OS}" ] || [ "${TARGET_OS}" = "all" ]; then
-            matrix='{"target_os":["linuxmint-21.3","linuxmint-22.1","linuxmint-22.2"]}'
+            matrix='{"target_os":["linuxmint-21.3","linuxmint-22.1","linuxmint-22.2","linuxmint-22.3"]}'
           else
             matrix=$(printf '{"target_os":["%s"]}' "${TARGET_OS}")
           fi
