@@ -33,6 +33,25 @@ A compatibility guardrail that continuously monitors whether [tt-metal](https://
 
 The `tt-installer` column is added once Burst 2 lands; until then, it shows `—` for all rows.
 
+## Repository layout
+
+```
+.
+├── README.md             # this file (compatibility table is auto-updated)
+├── LICENSE               # Apache-2.0
+├── .dockerignore
+├── os/                   # per-distribution build environments (see os/README.md)
+│   └── linuxmint/
+│       ├── 21.3/Dockerfile
+│       ├── 22.1/Dockerfile
+│       └── 22.2/Dockerfile
+├── history/              # per-run JSON snapshots (populated from Burst 2.6)
+├── docs/                 # contributor docs (populated from Burst 3.2)
+└── .github/workflows/    # CI definitions (populated from Burst 1.2)
+```
+
+See [`os/README.md`](./os/README.md) for the conventions used in distribution directories.
+
 ## How it works
 
 1. Each supported distribution has a `Dockerfile` under `os/<distro>/<version>/`.
