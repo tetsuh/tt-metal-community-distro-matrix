@@ -1,0 +1,13 @@
+# Default: let Git decide line endings, but normalize to LF in the repo.
+* text=auto eol=lf
+
+# Files that MUST stay LF even when checked out on Windows
+Dockerfile  text eol=lf
+*.sh        text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf
+
+# Treat known binary types verbatim
+*.png       binary
+*.jpg       binary
+*.gif       binary
