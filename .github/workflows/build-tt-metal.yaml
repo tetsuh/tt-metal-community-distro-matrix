@@ -117,19 +117,36 @@ jobs:
         id: artifacts
         run: |
           set -eu
-          # tt-metal build_metal.sh writes to ./build (and may create ./built).
-          for d in tt-metal/build tt-metal/built; do
-            if [ -d "$d" ]; then
-              echo "Found artifact directory: $d"
-              count=$(find "$d" -type f | wc -l)
-              echo "  files: $count"
-              if [ "$count" -gt 0 ]; then
-                echo "found_dir=$d" >> "$GITHUB_OUTPUT"
-                exit 0
+          # tt-metal's build_metal.sh writes to a configuration-specific
+          # directory such as build_Release/ and creates build/ as a
+          # symlink pointing at it. We want to accept either layout, and
+          # we must follow symlinks when counting files (find's default
+          # -P does not descend into symlinked starting points).
+          shopt -s nullglob
+          candidates=(tt-metal/build tt-metal/build_Release tt-metal/build_Debug tt-metal/build_RelWithDebInfo tt-metal/built)
+          for d in "${candidates[@]}"; do
+            if [ -e "$d" ]; then
+              # Resolve symlinks so we report and count the real directory.
+              real=$(readlink -f "$d")
+              if [ -d "$real" ]; then
+                count=$(find -L "$real" -type f | wc -l)
+                echo "Found artifact directory: $d -> $real (files: $count)"
+                if [ "$count" -gt 0 ]; then
+                  # Sanity check: the main libtt_metal.so should exist.
+                  if find -L "$real" -type f -name 'libtt_metal.so*' | grep -q .; then
+                    echo "  libtt_metal.so present"
+                  else
+                    echo "::warning::libtt_metal.so not found under $real"
+                  fi
+                  echo "found_dir=$d" >> "$GITHUB_OUTPUT"
+                  echo "real_dir=$real" >> "$GITHUB_OUTPUT"
+                  exit 0
+                fi
               fi
             fi
           done
-          echo "::error::No build artifacts found under tt-metal/build or tt-metal/built"
+          echo "::error::No build artifacts found under tt-metal/build*, tt-metal/built"
+          ls -la tt-metal/ || true
           exit 1
 
       - name: Write status JSON
