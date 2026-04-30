@@ -79,7 +79,8 @@ jobs:
           path: tt-metal
           ref: ${{ inputs.tt_metal_ref }}
           submodules: recursive
-          fetch-depth: 1
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Record tt-metal commit
         id: ttmetal
@@ -101,6 +102,12 @@ jobs:
             "${{ steps.os.outputs.image_tag }}" \
             bash -lc '
               set -eux
+              # Tell git that the bind-mounted source tree (owned by the host runner uid)
+              # is safe to use as root inside the container. Without this, git refuses to
+              # operate on the directory and tt-metal cannot determine its version, which
+              # later causes write_basic_package_version_file() to fail with
+              # "No VERSION specified".
+              git config --global --add safe.directory "*"
               cat /etc/os-release
               ./install_dependencies.sh --docker
               ./build_metal.sh
