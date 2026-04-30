@@ -1,0 +1,159 @@
+name: Build tt-metal on community distros
+
+run-name: Build tt-metal (${{ inputs.tt_metal_ref }}) on ${{ inputs.target_os }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_os:
+        description: 'Target distro/version (matches a directory under os/)'
+        required: true
+        type: choice
+        options:
+          - linuxmint-22.2
+        default: 'linuxmint-22.2'
+      tt_metal_repo:
+        description: 'Upstream tt-metal repository (owner/name)'
+        required: true
+        default: 'tenstorrent/tt-metal'
+      tt_metal_ref:
+        description: 'Branch, tag or commit SHA to build'
+        required: true
+        default: 'main'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ inputs.target_os }} / tt-metal@${{ inputs.tt_metal_ref }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Resolve OS path
+        id: os
+        run: |
+          set -eu
+          target='${{ inputs.target_os }}'
+          # Split "<distro>-<version>" -> distro / version. version may contain dots.
+          distro="${target%%-*}"
+          version="${target#*-}"
+          os_dir="os/${distro}/${version}"
+          if [ ! -f "${os_dir}/Dockerfile" ]; then
+            echo "::error::Dockerfile not found at ${os_dir}/Dockerfile"
+            exit 1
+          fi
+          echo "distro=${distro}"     >> "$GITHUB_OUTPUT"
+          echo "version=${version}"   >> "$GITHUB_OUTPUT"
+          echo "os_dir=${os_dir}"     >> "$GITHUB_OUTPUT"
+          echo "image_tag=ttmcdm-${distro}-${version}:ci" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build OS base image (cached)
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ steps.os.outputs.os_dir }}
+          file: ${{ steps.os.outputs.os_dir }}/Dockerfile
+          load: true
+          tags: ${{ steps.os.outputs.image_tag }}
+          cache-from: type=gha,scope=${{ inputs.target_os }}
+          cache-to: type=gha,scope=${{ inputs.target_os }},mode=max
+
+      - name: Verify base image identity
+        run: |
+          set -eu
+          docker run --rm "${{ steps.os.outputs.image_tag }}" cat /etc/os-release | tee os-release.txt
+          # Sanity check: the file should at least carry an ID or NAME field.
+          grep -E '^(ID|NAME)=' os-release.txt >/dev/null
+
+      - name: Checkout tt-metal
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.tt_metal_repo }}
+          path: tt-metal
+          ref: ${{ inputs.tt_metal_ref }}
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Record tt-metal commit
+        id: ttmetal
+        working-directory: tt-metal
+        run: |
+          sha=$(git rev-parse HEAD)
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+          echo "tt-metal HEAD: ${sha}"
+
+      - name: Build tt-metal inside container
+        id: build
+        run: |
+          set -o pipefail
+          mkdir -p logs
+          docker run --rm \
+            -v "${PWD}/tt-metal:/workspace/tt-metal" \
+            -w /workspace/tt-metal \
+            -e TT_METAL_HOME=/workspace/tt-metal \
+            "${{ steps.os.outputs.image_tag }}" \
+            bash -lc '
+              set -eux
+              cat /etc/os-release
+              ./install_dependencies.sh --docker
+              ./build_metal.sh
+            ' 2>&1 | tee logs/build.log
+
+      - name: Verify build artifacts
+        id: artifacts
+        run: |
+          set -eu
+          # tt-metal build_metal.sh writes to ./build (and may create ./built).
+          for d in tt-metal/build tt-metal/built; do
+            if [ -d "$d" ]; then
+              echo "Found artifact directory: $d"
+              count=$(find "$d" -type f | wc -l)
+              echo "  files: $count"
+              if [ "$count" -gt 0 ]; then
+                echo "found_dir=$d" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+          done
+          echo "::error::No build artifacts found under tt-metal/build or tt-metal/built"
+          exit 1
+
+      - name: Write status JSON
+        if: always()
+        run: |
+          set -eu
+          mkdir -p logs
+          status="${{ job.status }}"
+          cat > logs/status.json <<EOF
+          {
+            "target_os": "${{ inputs.target_os }}",
+            "distro":    "${{ steps.os.outputs.distro }}",
+            "version":   "${{ steps.os.outputs.version }}",
+            "tt_metal_repo": "${{ inputs.tt_metal_repo }}",
+            "tt_metal_ref":  "${{ inputs.tt_metal_ref }}",
+            "tt_metal_sha":  "${{ steps.ttmetal.outputs.sha }}",
+            "run_id":   "${{ github.run_id }}",
+            "run_url":  "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "status":   "${status}",
+            "artifact_dir": "${{ steps.artifacts.outputs.found_dir }}"
+          }
+          EOF
+          cat logs/status.json
+
+      - name: Upload logs and status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ inputs.target_os }}-${{ github.run_id }}
+          path: |
+            logs/
+            os-release.txt
+          if-no-files-found: warn
+          retention-days: 30
