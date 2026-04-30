@@ -14,6 +14,7 @@ A compatibility guardrail that continuously monitors whether [tt-metal](https://
 
 | Distribution | tt-metal build | tt-installer | Logs |
 |---|:-:|:-:|---|
+| Linux Mint 22.3 | ⏳ | — | — |
 | Linux Mint 22.2 | ⏳ | — | — |
 | Linux Mint 22.1 | ⏳ | — | — |
 | Linux Mint 21.3 | ⏳ | — | — |
@@ -44,7 +45,8 @@ The `tt-installer` column is added once Burst 2 lands; until then, it shows `—
 │   └── linuxmint/
 │       ├── 21.3/Dockerfile
 │       ├── 22.1/Dockerfile
-│       └── 22.2/Dockerfile
+│       ├── 22.2/Dockerfile
+│       └── 22.3/Dockerfile
 ├── history/              # per-run JSON snapshots (populated from Burst 2.6)
 ├── docs/                 # contributor docs (populated from Burst 3.2)
 └── .github/workflows/    # CI definitions (populated from Burst 1.2)
