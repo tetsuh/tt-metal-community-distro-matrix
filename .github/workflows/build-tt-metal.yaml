@@ -6,12 +6,15 @@ on:
   workflow_dispatch:
     inputs:
       target_os:
-        description: 'Target distro/version (matches a directory under os/)'
+        description: 'Target distro/version, or "all" to run the full matrix'
         required: true
         type: choice
         options:
+          - all
           - linuxmint-22.2
-        default: 'linuxmint-22.2'
+          - linuxmint-22.1
+          - linuxmint-21.3
+        default: 'all'
       tt_metal_repo:
         description: 'Upstream tt-metal repository (owner/name)'
         required: true
@@ -25,10 +28,34 @@ permissions:
   contents: read
 
 jobs:
+  setup:
+    name: Compute matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}
+    steps:
+      - name: Choose target OSes
+        id: set
+        env:
+          TARGET_OS: ${{ inputs.target_os }}
+        run: |
+          set -eu
+          if [ -z "${TARGET_OS}" ] || [ "${TARGET_OS}" = "all" ]; then
+            matrix='{"target_os":["linuxmint-21.3","linuxmint-22.1","linuxmint-22.2"]}'
+          else
+            matrix=$(printf '{"target_os":["%s"]}' "${TARGET_OS}")
+          fi
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+          echo "Selected matrix: ${matrix}"
+
   build:
-    name: ${{ inputs.target_os }} / tt-metal@${{ inputs.tt_metal_ref }}
+    needs: setup
+    name: ${{ matrix.target_os }} / tt-metal@${{ inputs.tt_metal_ref }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
 
     steps:
       - name: Checkout this repository
@@ -36,9 +63,11 @@ jobs:
 
       - name: Resolve OS path
         id: os
+        env:
+          TARGET_OS: ${{ matrix.target_os }}
         run: |
           set -eu
-          target='${{ inputs.target_os }}'
+          target="${TARGET_OS}"
           # Split "<distro>-<version>" -> distro / version. version may contain dots.
           distro="${target%%-*}"
           version="${target#*-}"
@@ -62,8 +91,8 @@ jobs:
           file: ${{ steps.os.outputs.os_dir }}/Dockerfile
           load: true
           tags: ${{ steps.os.outputs.image_tag }}
-          cache-from: type=gha,scope=${{ inputs.target_os }}
-          cache-to: type=gha,scope=${{ inputs.target_os }},mode=max
+          cache-from: type=gha,scope=${{ matrix.target_os }}
+          cache-to: type=gha,scope=${{ matrix.target_os }},mode=max
 
       - name: Verify base image identity
         run: |
@@ -157,7 +186,7 @@ jobs:
           status="${{ job.status }}"
           cat > logs/status.json <<EOF
           {
-            "target_os": "${{ inputs.target_os }}",
+            "target_os": "${{ matrix.target_os }}",
             "distro":    "${{ steps.os.outputs.distro }}",
             "version":   "${{ steps.os.outputs.version }}",
             "tt_metal_repo": "${{ inputs.tt_metal_repo }}",
@@ -175,7 +204,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-${{ inputs.target_os }}-${{ github.run_id }}
+          name: build-${{ matrix.target_os }}-${{ github.run_id }}
           path: |
             logs/
             os-release.txt
