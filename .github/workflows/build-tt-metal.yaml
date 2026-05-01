@@ -159,9 +159,27 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
+          # install_dependencies.sh internally calls add-apt-repository for the
+          # toolchain PPA, which is brittle: launchpad.net 10s-timeout failures
+          # have repeatedly caused legitimate runs to fail. Wrap the step in a
+          # bounded retry so a single transient timeout does not poison the
+          # matrix. The script is idempotent on re-run.
           docker exec ttbuild bash -lc '
-            set -eux
-            ./install_dependencies.sh --docker
+            set -eu
+            attempt=0
+            until [ "${attempt}" -ge 3 ]; do
+              attempt=$((attempt + 1))
+              echo "::group::install_dependencies.sh attempt ${attempt}"
+              if ./install_dependencies.sh --docker; then
+                echo "::endgroup::"
+                exit 0
+              fi
+              echo "::endgroup::"
+              echo "::warning::install_dependencies.sh failed on attempt ${attempt}; retrying"
+              sleep 15
+            done
+            echo "::error::install_dependencies.sh failed after 3 attempts"
+            exit 1
           ' 2>&1 | tee logs/deps.log
 
       - name: Build tt-metal
@@ -269,7 +287,7 @@ jobs:
                   --mode-non-interactive \
                   --install-kmd \
                   --no-install-hugepages \
-                  --no-update-firmware \
+                  --update-firmware=off \
                   --no-install-metalium-container \
                   --no-install-forge-container \
                   --no-install-metalium-models-container \
