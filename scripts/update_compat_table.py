@@ -72,6 +72,9 @@ def collect(artifacts_dir: Path) -> dict[str, dict]:
         except (OSError, json.JSONDecodeError) as exc:
             print(f"warn: cannot parse {status_path}: {exc}", file=sys.stderr)
             continue
+        if not isinstance(data, dict):
+            print(f"warn: {status_path} is not a JSON object", file=sys.stderr)
+            continue
         os_id = data.get("target_os")
         if not os_id:
             print(f"warn: {status_path} has no target_os field", file=sys.stderr)
@@ -84,10 +87,12 @@ def render(by_os: dict[str, dict]) -> str:
     sha = ""
     ref = ""
     for data in by_os.values():
-        if not sha and data.get("tt_metal_sha"):
-            sha = data["tt_metal_sha"]
-        if not ref and data.get("tt_metal_ref"):
-            ref = data["tt_metal_ref"]
+        val_sha = data.get("tt_metal_sha")
+        if not sha and val_sha:
+            sha = str(val_sha)
+        val_ref = data.get("tt_metal_ref")
+        if not ref and val_ref:
+            ref = str(val_ref)
         if sha and ref:
             break
     sha_short = sha[:7] if sha else "<sha>"
@@ -102,6 +107,13 @@ def render(by_os: dict[str, dict]) -> str:
     lines.append("")
     lines.append("| Distribution | tt-metal build | tt-installer | Logs |")
     lines.append("|---|:-:|:-:|---|")
+    known_oses = {os_id for os_id, _ in ROW_ORDER}
+    for os_id in by_os:
+        if os_id not in known_oses:
+            print(
+                f"warn: OS '{os_id}' found in artifacts but missing from ROW_ORDER",
+                file=sys.stderr,
+            )
     for os_id, name in ROW_ORDER:
         data = by_os.get(os_id)
         if data:
@@ -138,6 +150,13 @@ def main() -> int:
                     help="fail if any of these target_os values is missing "
                          "from the collected status.json files")
     args = ap.parse_args()
+
+    if not args.artifacts_dir.is_dir():
+        print(
+            f"error: {args.artifacts_dir} is not a directory",
+            file=sys.stderr,
+        )
+        return 1
 
     by_os = collect(args.artifacts_dir)
 
