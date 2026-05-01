@@ -223,60 +223,93 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p logs
-          # Fresh container so tt-installer is exercised on a clean image
-          # (no leftover state from install_dependencies.sh / build_metal.sh).
-          # Container mode skips KMD / HugePages / SFPI / reboot, which are
-          # the parts that need real Tenstorrent hardware. We still let it
-          # install tt-flash / tt-smi / and add the TT apt repo so we can
-          # run post-condition checks.
+          # Fresh container so tt-installer is exercised on a clean image.
+          # Aligned with tt-installer's own CI workflow
+          # (.github/workflows/test-debian-ubuntu.yml in tenstorrent/tt-installer):
+          #   * non-root user with passwordless sudo,
+          #   * pre-install git/python3-pip/jq/curl/sudo,
+          #   * --reboot-option=never, --python-choice=new-venv, --no-install-hugepages,
+          #   * timeout-bound run.
+          # Differences from upstream:
+          #   * we set --no-update-firmware (no Tenstorrent HW present),
+          #   * --install-container-runtime=no (we are already in a container),
+          #   * we skip the heavyweight container pulls
+          #     (Metalium / Forge / InferenceServer / Studio) — those are
+          #     covered in later bursts.
           docker run --rm \
             -v "${PWD}/logs:/logs" \
             "${{ steps.os.outputs.image_tag }}" \
-            bash -lc '
+            bash -c '
               set -eux
-              # Some base images do not ship curl / sudo / ca-certificates
-              # by default — make sure they exist before invoking install.sh.
+              export DEBIAN_FRONTEND=noninteractive
               if command -v apt-get >/dev/null 2>&1; then
-                export DEBIAN_FRONTEND=noninteractive
                 apt-get update
-                apt-get install -y --no-install-recommends curl ca-certificates sudo
+                apt-get install -y --no-install-recommends \
+                  git python3-pip jq curl ca-certificates sudo
               elif command -v dnf >/dev/null 2>&1; then
-                dnf install -y curl ca-certificates sudo
+                dnf install -y git python3-pip jq curl ca-certificates sudo
               fi
 
-              cat /etc/os-release
-              curl -fsSL https://github.com/tenstorrent/tt-installer/releases/latest/download/install.sh -o /tmp/install.sh
-              chmod +x /tmp/install.sh
+              cat /etc/os-release | tee /logs/install-os-release.txt
 
-              # Run installer. --mode-container handles HW-bound steps.
-              # We disable container-runtime install (we are already in
-              # a container) and the heavyweight container/server pulls
-              # (Metalium/Forge/Studio/InferenceServer) — those are tested
-              # in later bursts.
+              # Create non-root user with passwordless sudo (matches upstream).
+              useradd -m -s /bin/bash testuser
+              echo "testuser ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/testuser
+
+              # Stage install.sh in a place testuser can read.
+              curl -fsSL https://github.com/tenstorrent/tt-installer/releases/latest/download/install.sh \
+                -o /home/testuser/install.sh
+              chmod +x /home/testuser/install.sh
+              chown testuser:testuser /home/testuser/install.sh
+
               set +e
-              /tmp/install.sh \
-                --mode-non-interactive \
-                --mode-container \
-                --install-container-runtime=no \
-                --no-install-metalium-container \
-                --no-install-forge-container \
-                --no-install-inference-server \
-                --no-install-studio \
-                2>&1 | tee /logs/install.log
-              installer_rc=${PIPESTATUS[0]}
+              su - testuser -c "
+                set -eux
+                timeout 900 bash /home/testuser/install.sh \
+                  --mode-non-interactive \
+                  --install-kmd \
+                  --no-install-hugepages \
+                  --no-update-firmware \
+                  --no-install-metalium-container \
+                  --no-install-forge-container \
+                  --no-install-metalium-models-container \
+                  --no-install-inference-server \
+                  --no-install-studio \
+                  --install-container-runtime=no \
+                  --python-choice=new-venv \
+                  --reboot-option=never \
+                  2>&1 | tee /logs/install.log
+                exit \${PIPESTATUS[0]}
+              "
+              installer_rc=$?
               set -e
 
-              # Post-condition (T2) checks — record each independently so we
-              # can debug from the log even when overall install_rc != 0.
+              # Discover the venv path (default is $HOME/.tenstorrent-venv but
+              # honour --new-venv-location if upstream changes the default).
+              venv="/home/testuser/.tenstorrent-venv"
+              [ -d "${venv}" ] || venv=$(find /home/testuser -maxdepth 3 -type d -name "*.tenstorrent-venv*" 2>/dev/null | head -n1)
+
+              # T2 post-conditions. tt-flash / tt-smi are installed *into*
+              # the new-venv, so we look there as well as on PATH.
+              has_bin() {
+                local name=$1
+                if [ -n "${venv:-}" ] && [ -x "${venv}/bin/${name}" ]; then
+                  echo "${venv}/bin/${name}"
+                  return 0
+                fi
+                command -v "${name}" 2>/dev/null && return 0
+                return 1
+              }
+
               {
                 echo "installer_rc=${installer_rc}"
-                if command -v tt-flash >/dev/null 2>&1; then
-                  echo "tt_flash=present ($(command -v tt-flash))"
+                if path=$(has_bin tt-flash); then
+                  echo "tt_flash=present (${path})"
                 else
                   echo "tt_flash=missing"
                 fi
-                if command -v tt-smi >/dev/null 2>&1; then
-                  echo "tt_smi=present ($(command -v tt-smi))"
+                if path=$(has_bin tt-smi); then
+                  echo "tt_smi=present (${path})"
                 else
                   echo "tt_smi=missing"
                 fi
@@ -288,8 +321,8 @@ jobs:
                 fi
               } | tee /logs/install-postcheck.txt
 
-              # Pass overall install if installer exited 0 AND the three
-              # post-conditions are all met. Otherwise fail this step.
+              # Pass overall install only if installer exited 0 AND all three
+              # post-conditions are met.
               grep -q "^tt_flash=present" /logs/install-postcheck.txt \
                 && grep -q "^tt_smi=present"  /logs/install-postcheck.txt \
                 && grep -q "^tt_repo=present" /logs/install-postcheck.txt \
