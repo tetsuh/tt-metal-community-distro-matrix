@@ -105,8 +105,8 @@ def render(by_os: dict[str, dict]) -> str:
     lines.append(f"**Last updated:** {ts}")
     lines.append(f"**Tested tt-metal:** `{ref}@{sha_short}`")
     lines.append("")
-    lines.append("| Distribution | tt-metal build | tt-installer | Logs |")
-    lines.append("|---|:-:|:-:|---|")
+    lines.append("| Distribution | deps | build | install | Logs |")
+    lines.append("|---|:-:|:-:|:-:|---|")
     known_oses = {os_id for os_id, _ in ROW_ORDER}
     for os_id in by_os:
         if os_id not in known_oses:
@@ -114,17 +114,31 @@ def render(by_os: dict[str, dict]) -> str:
                 f"warn: OS '{os_id}' found in artifacts but missing from ROW_ORDER",
                 file=sys.stderr,
             )
+
+    def category_emoji(data: dict, key: str) -> str:
+        # Prefer the per-category status if the build job recorded one
+        # (workflows from Burst 2.1+). Older status.json files only have
+        # the overall ``status`` field — fall back to that so historical
+        # artifacts still render. A status.json with neither field, or
+        # with an unknown value, renders as ⏳.
+        per_cat = (data.get(key) or "").lower()
+        if per_cat:
+            return STATUS_EMOJI.get(per_cat, "⏳")
+        overall = (data.get("status") or "").lower()
+        return STATUS_EMOJI.get(overall, "⏳")
+
     for os_id, name in ROW_ORDER:
         data = by_os.get(os_id)
         if data:
-            status = (data.get("status") or "").lower()
-            emoji = STATUS_EMOJI.get(status, "⏳")
+            deps = category_emoji(data, "deps_status")
+            build = category_emoji(data, "build_status")
+            install = category_emoji(data, "install_status")
             run_url = data.get("run_url", "")
             log_cell = f"[run]({run_url})" if run_url else "—"
         else:
-            emoji = "⏳"
+            deps = build = install = "⏳"
             log_cell = "—"
-        lines.append(f"| {name} | {emoji} | — | {log_cell} |")
+        lines.append(f"| {name} | {deps} | {build} | {install} | {log_cell} |")
     return "\n".join(lines)
 
 

@@ -126,31 +126,59 @@ jobs:
           echo "sha=${sha}" >> "$GITHUB_OUTPUT"
           echo "tt-metal HEAD: ${sha}"
 
-      - name: Build tt-metal inside container
-        id: build
+      - name: Start build container
+        id: container
         run: |
-          set -o pipefail
+          set -eu
           mkdir -p logs
-          docker run --rm \
+          # A long-running container so the deps/build/install steps can run as
+          # separate docker exec calls (each tracked individually in the matrix)
+          # while sharing filesystem state. The deps and build steps must share
+          # state so apt packages installed by install_dependencies.sh are still
+          # there for build_metal.sh.
+          docker run -d --name ttbuild \
             -v "${PWD}/tt-metal:/workspace/tt-metal" \
             -w /workspace/tt-metal \
             -e TT_METAL_HOME=/workspace/tt-metal \
             "${{ steps.os.outputs.image_tag }}" \
-            bash -lc '
-              set -eux
-              # Tell git that the bind-mounted source tree (owned by the host runner uid)
-              # is safe to use as root inside the container. Without this, git refuses to
-              # operate on the directory and tt-metal cannot determine its version, which
-              # later causes write_basic_package_version_file() to fail with
-              # "No VERSION specified".
-              git config --global --add safe.directory "*"
-              cat /etc/os-release
-              ./install_dependencies.sh --docker
-              ./build_metal.sh
-            ' 2>&1 | tee logs/build.log
+            sleep infinity
+
+      - name: Configure container for tt-metal sources
+        run: |
+          set -eu
+          # See note below: bind-mount uid mismatch makes git refuse to read the
+          # tree as root unless we mark it safe.
+          docker exec ttbuild bash -lc '
+            set -eux
+            git config --global --add safe.directory "*"
+            cat /etc/os-release
+          '
+
+      - name: Install tt-metal dependencies
+        id: deps
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          docker exec ttbuild bash -lc '
+            set -eux
+            ./install_dependencies.sh --docker
+          ' 2>&1 | tee logs/deps.log
+
+      - name: Build tt-metal
+        id: build
+        if: steps.deps.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          docker exec ttbuild bash -lc '
+            set -eux
+            ./build_metal.sh
+          ' 2>&1 | tee logs/build.log
 
       - name: Verify build artifacts
         id: artifacts
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
         run: |
           set -eu
           # tt-metal's build_metal.sh writes to a configuration-specific
@@ -185,11 +213,112 @@ jobs:
           ls -la tt-metal/ || true
           exit 1
 
+      - name: Stop build container
+        if: always()
+        run: docker rm -f ttbuild || true
+
+      - name: Run tt-installer (fresh container)
+        id: install
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          mkdir -p logs
+          # Fresh container so tt-installer is exercised on a clean image
+          # (no leftover state from install_dependencies.sh / build_metal.sh).
+          # Container mode skips KMD / HugePages / SFPI / reboot, which are
+          # the parts that need real Tenstorrent hardware. We still let it
+          # install tt-flash / tt-smi / and add the TT apt repo so we can
+          # run post-condition checks.
+          docker run --rm \
+            -v "${PWD}/logs:/logs" \
+            "${{ steps.os.outputs.image_tag }}" \
+            bash -lc '
+              set -eux
+              # Some base images do not ship curl / sudo / ca-certificates
+              # by default — make sure they exist before invoking install.sh.
+              if command -v apt-get >/dev/null 2>&1; then
+                export DEBIAN_FRONTEND=noninteractive
+                apt-get update
+                apt-get install -y --no-install-recommends curl ca-certificates sudo
+              elif command -v dnf >/dev/null 2>&1; then
+                dnf install -y curl ca-certificates sudo
+              fi
+
+              cat /etc/os-release
+              curl -fsSL https://github.com/tenstorrent/tt-installer/releases/latest/download/install.sh -o /tmp/install.sh
+              chmod +x /tmp/install.sh
+
+              # Run installer. --mode-container handles HW-bound steps.
+              # We disable container-runtime install (we are already in
+              # a container) and the heavyweight container/server pulls
+              # (Metalium/Forge/Studio/InferenceServer) — those are tested
+              # in later bursts.
+              set +e
+              /tmp/install.sh \
+                --mode-non-interactive \
+                --mode-container \
+                --install-container-runtime=no \
+                --no-install-metalium-container \
+                --no-install-forge-container \
+                --no-install-inference-server \
+                --no-install-studio \
+                2>&1 | tee /logs/install.log
+              installer_rc=${PIPESTATUS[0]}
+              set -e
+
+              # Post-condition (T2) checks — record each independently so we
+              # can debug from the log even when overall install_rc != 0.
+              {
+                echo "installer_rc=${installer_rc}"
+                if command -v tt-flash >/dev/null 2>&1; then
+                  echo "tt_flash=present ($(command -v tt-flash))"
+                else
+                  echo "tt_flash=missing"
+                fi
+                if command -v tt-smi >/dev/null 2>&1; then
+                  echo "tt_smi=present ($(command -v tt-smi))"
+                else
+                  echo "tt_smi=missing"
+                fi
+                if ls /etc/apt/sources.list.d/tenstorrent* 2>/dev/null \
+                   || ls /etc/yum.repos.d/tenstorrent* 2>/dev/null; then
+                  echo "tt_repo=present"
+                else
+                  echo "tt_repo=missing"
+                fi
+              } | tee /logs/install-postcheck.txt
+
+              # Pass overall install if installer exited 0 AND the three
+              # post-conditions are all met. Otherwise fail this step.
+              grep -q "^tt_flash=present" /logs/install-postcheck.txt \
+                && grep -q "^tt_smi=present"  /logs/install-postcheck.txt \
+                && grep -q "^tt_repo=present" /logs/install-postcheck.txt \
+                && [ "${installer_rc}" -eq 0 ]
+            ' 2>&1 | tee -a logs/install.log
+
       - name: Write status JSON
         if: always()
         run: |
           set -eu
           mkdir -p logs
+          # Map a step.outcome (success / failure / skipped / cancelled) to
+          # a stable string for status.json. We keep the legacy "status"
+          # field (job.status) for backward compatibility with older
+          # consumers, but new consumers should look at deps_status /
+          # build_status / install_status individually.
+          map_outcome() {
+            case "$1" in
+              success)   echo "success" ;;
+              failure)   echo "failure" ;;
+              skipped)   echo "skipped" ;;
+              cancelled) echo "skipped" ;;
+              "")        echo "skipped" ;;
+              *)         echo "$1" ;;
+            esac
+          }
+          deps_status=$(map_outcome "${{ steps.deps.outcome }}")
+          build_status=$(map_outcome "${{ steps.build.outcome }}")
+          install_status=$(map_outcome "${{ steps.install.outcome }}")
           status="${{ job.status }}"
           cat > logs/status.json <<EOF
           {
@@ -201,8 +330,11 @@ jobs:
             "tt_metal_sha":  "${{ steps.ttmetal.outputs.sha }}",
             "run_id":   "${{ github.run_id }}",
             "run_url":  "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-            "status":   "${status}",
-            "artifact_dir": "${{ steps.artifacts.outputs.found_dir }}"
+            "status":          "${status}",
+            "deps_status":     "${deps_status}",
+            "build_status":    "${build_status}",
+            "install_status":  "${install_status}",
+            "artifact_dir":    "${{ steps.artifacts.outputs.found_dir }}"
           }
           EOF
           cat logs/status.json
