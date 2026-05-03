@@ -178,11 +178,21 @@ jobs:
                   #     binaries link only against widely-available
                   #     libstdc++ symbols, so we relax the install step to
                   #     dpkg -i --force-depends just for the sfpi package.
+                  #     We also reorder install_sfpi to run AFTER
+                  #     install_llvm: dpkg --force-depends leaves apt in
+                  #     a state where any subsequent apt-get install
+                  #     refuses to resolve new packages until the broken
+                  #     sfpi dep is fixed (apt suggests --fix-broken),
+                  #     so install_llvm must complete first while apt is
+                  #     still clean.
                   sed -i \
                     -e "/apt\.kitware\.com/d" \
                     -e "/kitware-archive-keyring/d" \
                     -e "s|apt-key add -|gpg --dearmor -o /etc/apt/trusted.gpg.d/apt-llvm-org.gpg|" \
                     -e "s|apt-get install -y --allow-downgrades \$TEMP_DIR/\$sfpi_filename|dpkg -i --force-depends \"\$TEMP_DIR/\$sfpi_filename\"|" \
+                    -e "s|^    install_sfpi$|__TT_SWAP__|" \
+                    -e "s|^    install_llvm$|    install_sfpi|" \
+                    -e "s|__TT_SWAP__|    install_llvm|" \
                     install_dependencies.sh
                   # On Debian 12 the libstdc++6 version is 12.2.0, but
                   # the upstream sfpi .deb declares

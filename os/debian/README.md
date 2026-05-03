@@ -109,3 +109,11 @@ unaffected.
   delete most workarounds here.
 * Pin both `debian:12` and `debian:13` by digest once we have a baseline
   green run we want to lock in for reproducibility.
+
+## Upstream context
+
+Upstream issue: https://github.com/tenstorrent/tt-metal/issues/18297 (Bounty: closed/paid)
+Reference PR: https://github.com/tenstorrent/tt-metal/pull/25922 (closed without merge; bounty awarded but the proposed install_tt-debian.sh was not landed in main).
+
+As of tt-metal main, install_dependencies.sh has no Debian-specific path; it falls into prep_ubuntu_system. Our workflow patches it in-line for Debian 12/13.
+
