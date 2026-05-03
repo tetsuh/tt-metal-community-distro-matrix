@@ -31,6 +31,16 @@ Finally, the Dockerfile sets `PATH`, `PKG_CONFIG_PATH`, and
 `prep_redhat_system` installs (under `/usr/lib64/openmpi/`) is
 discoverable without `module load mpi/openmpi-x86_64`.
 
+### Rocky 9 specifics
+
+Rocky 9 ships Python 3.9 by default, but tt-metal's
+`tt_metal/llrt/hal/codegen/codegen.py` uses PEP 604 (`X | None`) syntax
+that requires Python ≥ 3.10. The Rocky 9 Dockerfile installs
+`python3.11` from AppStream and creates `/usr/local/bin/python3` →
+`/usr/bin/python3.11` so that both tt-metal's tooling and CMake's
+`FindPython3` consistently use the newer interpreter. Rocky 10 ships
+Python 3.12 and does not need this workaround.
+
 This keeps the test surface as close as possible to what a user gets from
 `docker pull quay.io/rockylinux/rockylinux:N`, which is closer to the project's
 mission ("see what tt-metal does on a real distro") than re-deriving the OS

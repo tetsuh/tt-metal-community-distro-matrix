@@ -45,6 +45,12 @@ ENV LANG=en_US.UTF-8 \
 #     from the upstream image and not installed by tt-metal.
 #   zlib-devel — needed by tt-metal's CMake (ZLIB::ZLIB); not installed
 #     by prep_redhat_system.
+#   python3.11 (+ -devel / -pip) — Rocky 9 ships Python 3.9 by default,
+#     but tt-metal's tt_metal/llrt/hal/codegen/codegen.py uses PEP 604
+#     ``X | None`` syntax that requires Python >= 3.10. We pin python3
+#     to 3.11 by symlinking /usr/local/bin/python{,3} -> python3.11 so
+#     both tt-metal's codegen scripts and CMake's FindPython3 pick the
+#     newer interpreter (and its matching headers) consistently.
 #
 # The PATH / PKG_CONFIG_PATH / LD_LIBRARY_PATH entries above expose the
 # OpenMPI installation that tt-metal pulls in (Rocky packages OpenMPI
@@ -62,6 +68,11 @@ RUN dnf -y install dnf-plugins-core epel-release \
         patch \
         file \
         zlib-devel \
+        python3.11 \
+        python3.11-devel \
+        python3.11-pip \
+ && ln -sf /usr/bin/python3.11 /usr/local/bin/python3 \
+ && ln -sf /usr/bin/python3.11 /usr/local/bin/python \
  && dnf clean all \
  && rm -rf /var/cache/dnf
 
