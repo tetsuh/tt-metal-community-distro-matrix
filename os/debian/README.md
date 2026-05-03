@@ -57,12 +57,44 @@ The only PPA `install_dependencies.sh` adds (`ubuntu-toolchain-r/test`) is
 gated on `UBUNTU_CODENAME == noble`, which never matches on Debian. The
 workflow removes `software-properties-common` from the install line.
 
+### Legacy `apt-key` invocation
+
+`prep_ubuntu_system` runs
+
+```sh
+wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+```
+
+`apt-key` is deprecated on bookworm and **removed entirely** on trixie, so
+the script aborts on Debian 13 with `apt-key: command not found`. The
+workflow rewrites that line to the modern keyring form:
+
+```sh
+wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key |
+  gpg --dearmor -o /etc/apt/trusted.gpg.d/apt-llvm-org.gpg
+```
+
+which works on both Debian releases.
+
+### Debian 12 + sfpi: libstdc++6 too old
+
+The upstream `sfpi` `.deb` that `install_dependencies.sh` downloads requires
+`libstdc++6 >= 12.3.0`, but Debian 12 (bookworm) only ships
+`libstdc++6 12.2.0`. The workflow enables `bookworm-backports` and pulls
+`libstdc++6` from there *before* invoking `install_dependencies.sh`; that
+gives apt a satisfying candidate when sfpi is finally installed.
+
+This step is gated on `VERSION_CODENAME == bookworm`; Debian 13 already
+ships a new enough `libstdc++6` and is left untouched.
+
 ## Future improvements
 
 * Send a PR to upstream tt-metal that branches `prep_ubuntu_system` on
   `OS_ID` (or just on whether `OS_CODENAME` is an Ubuntu codename) so the
-  Kitware step is only run on Ubuntu-family systems and
-  `software-properties-common` is only installed where available. That
-  would let us delete both workarounds here.
+  Kitware step is only run on Ubuntu-family systems,
+  `software-properties-common` is only installed where available, and the
+  LLVM key is fetched into `/etc/apt/trusted.gpg.d/` (or
+  `/usr/share/keyrings/`) instead of via `apt-key`. That would let us
+  delete most workarounds here.
 * Pin both `debian:12` and `debian:13` by digest once we have a baseline
   green run we want to lock in for reproducibility.

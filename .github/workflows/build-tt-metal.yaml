@@ -156,7 +156,7 @@ jobs:
               . /etc/os-release
               case "${ID:-}" in
                 debian)
-                  # Two issues in install_dependencies.sh debian path
+                  # Several issues in install_dependencies.sh debian path
                   # (prep_ubuntu_system) prevent it from running unchanged on
                   # Debian 12 (bookworm) / 13 (trixie):
                   #   * Kitware does not publish apt repositories under those
@@ -170,11 +170,27 @@ jobs:
                   #     Debian because the only PPA install_dependencies.sh
                   #     adds (ubuntu-toolchain-r/test) is gated on
                   #     UBUNTU_CODENAME == noble.
+                  #   * apt-key has been removed from trixie altogether and
+                  #     is deprecated on bookworm.  Replace the legacy LLVM
+                  #     key install with a gpg --dearmor write into
+                  #     /etc/apt/trusted.gpg.d/, which works on both.
                   sed -i \
                     -e "/apt\.kitware\.com/d" \
                     -e "/kitware-archive-keyring/d" \
                     -e "s/ software-properties-common//" \
+                    -e "s|apt-key add -|gpg --dearmor -o /etc/apt/trusted.gpg.d/apt-llvm-org.gpg|" \
                     install_dependencies.sh
+                  # Debian 12 ships libstdc++6 12.2.0 but the upstream sfpi
+                  # .deb pulled in by install_dependencies.sh requires
+                  # libstdc++6 >= 12.3.0.  Pre-install the bookworm-backports
+                  # version so that apt has a satisfying candidate before
+                  # install_dependencies.sh runs sfpi.
+                  if [ "${VERSION_CODENAME:-}" = "bookworm" ]; then
+                    echo "deb http://deb.debian.org/debian bookworm-backports main" \
+                      > /etc/apt/sources.list.d/bookworm-backports.list
+                    apt-get update
+                    apt-get install -y -t bookworm-backports libstdc++6
+                  fi
                   ;;
               esac
               ./install_dependencies.sh --docker
