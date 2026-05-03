@@ -37,6 +37,7 @@ ROW_ORDER: list[tuple[str, str]] = [
     ("linuxmint-22.1", "Linux Mint 22.1"),
     ("linuxmint-21.3", "Linux Mint 21.3"),
     ("ubuntu-26.04", "Ubuntu 26.04"),
+    ("rocky-10", "Rocky Linux 10"),
     ("rocky-9", "Rocky Linux 9"),
 ]
 

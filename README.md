@@ -19,6 +19,7 @@ A compatibility guardrail that continuously monitors whether [tt-metal](https://
 | Linux Mint 22.1 | ✅ | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25204220658) |
 | Linux Mint 21.3 | ✅ | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25204220658) |
 | Ubuntu 26.04 | ⏳ | — | — |
+| Rocky Linux 10 | ⏳ | — | — |
 | Rocky Linux 9 | ⏳ | — | — |
 <!-- COMPAT_TABLE_END -->
 
@@ -42,11 +43,14 @@ The `tt-installer` column is added once Burst 2 lands; until then, it shows `—
 ├── LICENSE               # Apache-2.0
 ├── .dockerignore
 ├── os/                   # per-distribution build environments (see os/README.md)
-│   └── linuxmint/
-│       ├── 21.3/Dockerfile
-│       ├── 22.1/Dockerfile
-│       ├── 22.2/Dockerfile
-│       └── 22.3/Dockerfile
+│   ├── linuxmint/
+│   │   ├── 21.3/Dockerfile
+│   │   ├── 22.1/Dockerfile
+│   │   ├── 22.2/Dockerfile
+│   │   └── 22.3/Dockerfile
+│   └── rocky/
+│       ├── 9/Dockerfile
+│       └── 10/Dockerfile
 ├── history/              # per-run JSON snapshots (populated from Burst 2.6)
 ├── docs/                 # contributor docs (populated from Burst 3.2)
 └── .github/workflows/    # CI definitions (populated from Burst 1.2)
