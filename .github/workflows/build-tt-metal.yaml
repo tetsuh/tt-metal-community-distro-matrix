@@ -149,6 +149,34 @@ jobs:
               # "No VERSION specified".
               git config --global --add safe.directory "*"
               cat /etc/os-release
+              # OS-specific patches to tt-metal/install_dependencies.sh applied
+              # in-place against the checked-out tree. Keeping the patches here
+              # rather than baking them into per-OS Docker images means the
+              # base images stay clean and we can iterate without rebuilds.
+              . /etc/os-release
+              case "${ID:-}" in
+                debian)
+                  # Two issues in install_dependencies.sh debian path
+                  # (prep_ubuntu_system) prevent it from running unchanged on
+                  # Debian 12 (bookworm) / 13 (trixie):
+                  #   * Kitware does not publish apt repositories under those
+                  #     Debian codenames; the request for the Release file
+                  #     returns 404 and aborts apt-get update.  Debian 12
+                  #     ships CMake 3.25 and 13 ships 3.31, both >= the 3.24
+                  #     baseline required by tt-metal, so the Kitware upgrade
+                  #     is not strictly necessary.
+                  #   * software-properties-common has been dropped from
+                  #     trixie main; we do not need add-apt-repository on
+                  #     Debian because the only PPA install_dependencies.sh
+                  #     adds (ubuntu-toolchain-r/test) is gated on
+                  #     UBUNTU_CODENAME == noble.
+                  sed -i \
+                    -e "/apt\.kitware\.com/d" \
+                    -e "/kitware-archive-keyring/d" \
+                    -e "s/ software-properties-common//" \
+                    install_dependencies.sh
+                  ;;
+              esac
               ./install_dependencies.sh --docker
               ./build_metal.sh
             ' 2>&1 | tee logs/build.log
