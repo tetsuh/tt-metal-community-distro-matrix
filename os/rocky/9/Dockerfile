@@ -4,7 +4,10 @@
 # so we simply layer a minimal bootstrap on top of it instead of impersonating
 # the distro from a base Ubuntu image. The bootstrap installs only what
 # tt-metal's install_dependencies.sh and tt-installer's install.sh take as a
-# precondition (sudo, git, curl, locale data, ca-certificates, procps).
+# precondition (sudo, git, locale data, ca-certificates, procps).
+# curl is intentionally omitted: the upstream image ships curl-minimal which
+# provides the curl binary; pulling in curl-full conflicts with curl-minimal
+# (`package curl-minimal-... conflicts with curl provided by curl-...`).
 #
 # We pull from quay.io because that is the publisher Rocky Linux operates
 # directly. Using ":9" pins to the rolling 9.x tag, matching how the Mint
@@ -18,7 +21,6 @@ ENV LANG=en_US.UTF-8 \
 RUN dnf -y install \
         sudo \
         git \
-        curl \
         ca-certificates \
         glibc-langpack-en \
         procps-ng \

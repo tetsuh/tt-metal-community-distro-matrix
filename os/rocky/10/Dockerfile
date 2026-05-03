@@ -8,10 +8,11 @@ FROM quay.io/rockylinux/rockylinux:10
 ENV LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8
 
+# curl is intentionally omitted: the upstream image ships curl-minimal which
+# provides the curl binary; installing curl-full would conflict with it.
 RUN dnf -y install \
         sudo \
         git \
-        curl \
         ca-certificates \
         glibc-langpack-en \
         procps-ng \
