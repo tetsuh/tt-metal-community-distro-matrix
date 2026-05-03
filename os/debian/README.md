@@ -80,9 +80,12 @@ which works on both Debian releases.
 
 The upstream `sfpi` `.deb` that `install_dependencies.sh` downloads requires
 `libstdc++6 >= 12.3.0`, but Debian 12 (bookworm) only ships
-`libstdc++6 12.2.0`. The workflow enables `bookworm-backports` and pulls
-`libstdc++6` from there *before* invoking `install_dependencies.sh`; that
-gives apt a satisfying candidate when sfpi is finally installed.
+`libstdc++6 12.2.0`. `bookworm-backports` does not republish `libstdc++6`
+on its own, but installing `gcc-13` / `g++-13` from backports brings in
+`libstdc++6 13.x` as a runtime dependency. The workflow enables
+`bookworm-backports` and pulls those packages *before* invoking
+`install_dependencies.sh`; that gives apt a satisfying candidate when
+sfpi is finally installed.
 
 This step is gated on `VERSION_CODENAME == bookworm`; Debian 13 already
 ships a new enough `libstdc++6` and is left untouched.

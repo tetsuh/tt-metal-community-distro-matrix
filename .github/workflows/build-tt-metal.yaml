@@ -182,14 +182,15 @@ jobs:
                     install_dependencies.sh
                   # Debian 12 ships libstdc++6 12.2.0 but the upstream sfpi
                   # .deb pulled in by install_dependencies.sh requires
-                  # libstdc++6 >= 12.3.0.  Pre-install the bookworm-backports
-                  # version so that apt has a satisfying candidate before
-                  # install_dependencies.sh runs sfpi.
+                  # libstdc++6 >= 12.3.0.  bookworm-backports does not
+                  # publish a standalone libstdc++6 package, but pulling
+                  # gcc-13 from backports installs libstdc++6 13.x as a
+                  # dependency, which satisfies sfpi.
                   if [ "${VERSION_CODENAME:-}" = "bookworm" ]; then
                     echo "deb http://deb.debian.org/debian bookworm-backports main" \
                       > /etc/apt/sources.list.d/bookworm-backports.list
                     apt-get update
-                    apt-get install -y -t bookworm-backports libstdc++6
+                    apt-get install -y -t bookworm-backports gcc-13 g++-13 libstdc++6
                   fi
                   ;;
               esac
