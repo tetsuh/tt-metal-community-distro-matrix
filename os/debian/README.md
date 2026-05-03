@@ -78,17 +78,25 @@ which works on both Debian releases.
 
 ### Debian 12 + sfpi: libstdc++6 too old
 
-The upstream `sfpi` `.deb` that `install_dependencies.sh` downloads requires
-`libstdc++6 >= 12.3.0`, but Debian 12 (bookworm) only ships
-`libstdc++6 12.2.0`. `bookworm-backports` does not republish `libstdc++6`
-on its own, but installing `gcc-13` / `g++-13` from backports brings in
-`libstdc++6 13.x` as a runtime dependency. The workflow enables
-`bookworm-backports` and pulls those packages *before* invoking
-`install_dependencies.sh`; that gives apt a satisfying candidate when
-sfpi is finally installed.
+The upstream `sfpi` `.deb` declares `Depends: libstdc++6 (>= 12.3.0)`, but
+Debian 12 (bookworm) ships `libstdc++6 12.2.0`. Debian does not update the
+gcc minor version in stable, and `bookworm-backports` does not republish
+`libstdc++6` (or `gcc-13`), so apt has no candidate that satisfies the
+declared dependency.
 
-This step is gated on `VERSION_CODENAME == bookworm`; Debian 13 already
-ships a new enough `libstdc++6` and is left untouched.
+In practice the sfpi binaries link only against widely-available
+`libstdc++` symbols, so we extend the workflow's sed pass to relax just
+the sfpi install command in `install_dependencies.sh`:
+
+```sh
+apt-get install -y --allow-downgrades $TEMP_DIR/$sfpi_filename
+# becomes
+dpkg -i --force-depends "$TEMP_DIR/$sfpi_filename"
+```
+
+This keeps every other dependency check intact and only loosens the one
+known-too-strict bound. Debian 13 already ships `libstdc++6 14.x` and is
+unaffected.
 
 ## Future improvements
 

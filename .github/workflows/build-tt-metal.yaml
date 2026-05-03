@@ -174,24 +174,31 @@ jobs:
                   #     is deprecated on bookworm.  Replace the legacy LLVM
                   #     key install with a gpg --dearmor write into
                   #     /etc/apt/trusted.gpg.d/, which works on both.
+                  #   * Debian 12's libstdc++6 is 12.2.0, but the upstream
+                  #     sfpi .deb declares Depends: libstdc++6 (>= 12.3.0).
+                  #     Bookworm does not update gcc minor versions in
+                  #     stable, and bookworm-backports does not republish
+                  #     libstdc++6 / gcc-13.  In practice the sfpi
+                  #     binaries link only against widely-available
+                  #     libstdc++ symbols, so we relax the install step to
+                  #     dpkg -i --force-depends just for the sfpi package.
                   sed -i \
                     -e "/apt\.kitware\.com/d" \
                     -e "/kitware-archive-keyring/d" \
                     -e "s/ software-properties-common//" \
                     -e "s|apt-key add -|gpg --dearmor -o /etc/apt/trusted.gpg.d/apt-llvm-org.gpg|" \
+                    -e 's|apt-get install -y --allow-downgrades \$TEMP_DIR/\$sfpi_filename|dpkg -i --force-depends "$TEMP_DIR/$sfpi_filename"|' \
                     install_dependencies.sh
-                  # Debian 12 ships libstdc++6 12.2.0 but the upstream sfpi
-                  # .deb pulled in by install_dependencies.sh requires
-                  # libstdc++6 >= 12.3.0.  bookworm-backports does not
-                  # publish a standalone libstdc++6 package, but pulling
-                  # gcc-13 from backports installs libstdc++6 13.x as a
-                  # dependency, which satisfies sfpi.
-                  if [ "${VERSION_CODENAME:-}" = "bookworm" ]; then
-                    echo "deb http://deb.debian.org/debian bookworm-backports main" \
-                      > /etc/apt/sources.list.d/bookworm-backports.list
-                    apt-get update
-                    apt-get install -y -t bookworm-backports gcc-13 g++-13 libstdc++6
-                  fi
+                  # Debian 12's libstdc++6 is 12.2.0, but the upstream
+                  # sfpi .deb declares Depends: libstdc++6 (>= 12.3.0).
+                  # Bookworm does not bump gcc minor versions in stable,
+                  # and neither bookworm-backports nor bookworm-security
+                  # republishes libstdc++6 (gcc-13 isn't in backports
+                  # either).  In practice the sfpi binaries link only
+                  # against widely-available libstdc++ symbols, so the
+                  # sed above relaxes the sfpi install line to
+                  # `dpkg -i --force-depends`.  No extra apt steps needed
+                  # here on bookworm.
                   ;;
               esac
               ./install_dependencies.sh --docker
