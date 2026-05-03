@@ -44,6 +44,7 @@ The Debian patches currently in this repo:
 | `0002` | `prep_ubuntu_system: skip Kitware repo on non-Ubuntu (Debian)` | Kitware only publishes apt repos for Ubuntu codenames; adding it on Debian causes `apt-get update` to 404. Debian 12 (CMake 3.25) and Debian 13 (CMake 3.31) already meet tt-metal's `cmake_minimum_required(3.24)`, so the upgrade is unnecessary. |
 | `0003` | `install_sfpi: use dpkg --force-depends on Debian 12` | The upstream `sfpi` `.deb` declares `Depends: libstdc++6 (>= 12.3.0)`, but Debian 12 (bookworm) ships `libstdc++6 12.2.0` and `bookworm-backports` does not republish `libstdc++6` (or `gcc-13`). The patch relaxes the install to `dpkg -i --force-depends` only on Debian 12. Debian 13 ships `libstdc++6 14.x` and goes through the normal apt path. |
 | `0004` | `install_dependencies: run install_llvm before install_sfpi` | `dpkg --force-depends` leaves apt in a broken-packages state, which causes the next apt-driven step (`llvm.sh` installing `clang-N`) to fail with `Unable to correct problems, you have held broken packages`. Reordering the calls keeps the apt resolver clean while LLVM is installed. This is a no-op on distros where sfpi installs cleanly. |
+| `0005` | `prep_ubuntu_system: don't install software-properties-common on Debian` | The package was dropped from Debian 13 (trixie) main; apt fails with `Unable to locate package`. Its sole purpose is `add-apt-repository`, and the only caller in `install_dependencies.sh` is gated on `UBUNTU_CODENAME=noble`, which can never match on Debian. The patch skips the package on Debian. |
 
 Each patch carries an `Upstream-Status:` trailer in its commit message
 and is intended to be sent upstream as-is.  Use
@@ -52,7 +53,7 @@ to assemble them into a tt-metal branch ready for a PR.
 
 ## Future improvements
 
-* Land the four patches above upstream in tt-metal so `install_dependencies.sh`
+* Land the patches above upstream in tt-metal so `install_dependencies.sh`
   natively handles Debian 12/13 and we can delete the `patches/debian/`
   directory.
 * Pin both `debian:12` and `debian:13` by digest once we have a baseline

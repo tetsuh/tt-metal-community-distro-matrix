@@ -72,10 +72,11 @@ In addition we use two informal trailers in the body:
 
 | Path                         | Status      |
 |------------------------------|-------------|
-| `debian/0001-...apt-key.patch`        | Pending     |
-| `debian/0002-...Kitware...patch`      | Pending     |
-| `debian/0003-...sfpi...patch`         | Pending     |
-| `debian/0004-...install_llvm...patch` | Pending     |
+| `debian/0001-...apt-key.patch`           | Pending     |
+| `debian/0002-...Kitware...patch`         | Pending     |
+| `debian/0003-...sfpi...patch`            | Pending     |
+| `debian/0004-...install_llvm...patch`    | Pending     |
+| `debian/0005-...software-properties...patch` | Pending |
 
 The compatibility table in the top-level `README.md` shows, for each
 distro, both the *vanilla* result (no patches) and the *with-patches*
