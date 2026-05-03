@@ -8,9 +8,17 @@ FROM quay.io/rockylinux/rockylinux:10
 ENV LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8
 
-# curl is intentionally omitted: the upstream image ships curl-minimal which
-# provides the curl binary; installing curl-full would conflict with it.
-RUN dnf -y install \
+# Enable EPEL and CRB before installing the bootstrap packages —
+# see os/rocky/9/Dockerfile for the rationale (tt-metal's
+# install_dependencies.sh requires ninja-build / capstone-devel which
+# live in EPEL / CRB respectively, and the script does not enable
+# those repositories itself).
+#
+# curl is intentionally omitted: the upstream image ships curl-minimal
+# which provides the curl binary; installing curl-full would conflict.
+RUN dnf -y install dnf-plugins-core epel-release \
+ && dnf config-manager --set-enabled crb \
+ && dnf -y install \
         sudo \
         git \
         ca-certificates \

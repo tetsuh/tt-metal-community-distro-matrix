@@ -18,7 +18,17 @@ FROM quay.io/rockylinux/rockylinux:9
 ENV LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8
 
-RUN dnf -y install \
+# Enable EPEL and CRB (CodeReady Builder) before installing the bootstrap
+# packages. tt-metal's install_dependencies.sh redhat path (prep_redhat_system)
+# requires ninja-build (EPEL) and capstone-devel (CRB) but does not enable
+# these repositories itself, so a stock Rocky image fails with
+# "Unable to find a match: ninja-build capstone-devel". Enabling EPEL + CRB
+# here matches the long-standing convention on RHEL-family systems that any
+# non-trivial development workload pulls from these repos, and parallels how
+# the Mint Dockerfiles enable the Mint package repository on top of Ubuntu.
+RUN dnf -y install dnf-plugins-core epel-release \
+ && dnf config-manager --set-enabled crb \
+ && dnf -y install \
         sudo \
         git \
         ca-certificates \
