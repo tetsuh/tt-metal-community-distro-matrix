@@ -137,6 +137,7 @@ jobs:
           mkdir -p logs
           docker run --rm \
             -v "${PWD}/tt-metal:/workspace/tt-metal" \
+            -v "${PWD}/patches:/patches:ro" \
             -w /workspace/tt-metal \
             -e TT_METAL_HOME=/workspace/tt-metal \
             "${{ steps.os.outputs.image_tag }}" \
@@ -149,64 +150,24 @@ jobs:
               # "No VERSION specified".
               git config --global --add safe.directory "*"
               cat /etc/os-release
-              # OS-specific patches to tt-metal/install_dependencies.sh applied
-              # in-place against the checked-out tree. Keeping the patches here
-              # rather than baking them into per-OS Docker images means the
-              # base images stay clean and we can iterate without rebuilds.
+              # Apply OS-specific patches to tt-metal that are required for the
+              # build/install scripts to run on the target distro.  Patches are
+              # kept as standalone files under patches/<distro>/ so that they
+              # can be reviewed individually and later contributed upstream.
+              # See patches/README.md for the policy and per-patch status.
               . /etc/os-release
-              case "${ID:-}" in
-                debian)
-                  # Several issues in install_dependencies.sh debian path
-                  # (prep_ubuntu_system) prevent it from running unchanged on
-                  # Debian 12 (bookworm) / 13 (trixie):
-                  #   * Kitware does not publish apt repositories under those
-                  #     Debian codenames; the request for the Release file
-                  #     returns 404 and aborts apt-get update.  Debian 12
-                  #     ships CMake 3.25 and 13 ships 3.31, both >= the 3.24
-                  #     baseline required by tt-metal, so the Kitware upgrade
-                  #     is not strictly necessary.
-                  #   * apt-key has been removed from trixie altogether and
-                  #     is deprecated on bookworm.  Replace the legacy LLVM
-                  #     key install with a gpg --dearmor write into
-                  #     /etc/apt/trusted.gpg.d/, which works on both.
-                  #   * On Debian 12 the libstdc++6 version is 12.2.0, but
-                  #     the upstream sfpi .deb declares
-                  #     Depends: libstdc++6 (>= 12.3.0).
-                  #     Bookworm does not update gcc minor versions in
-                  #     stable, and bookworm-backports does not republish
-                  #     libstdc++6 / gcc-13.  In practice the sfpi
-                  #     binaries link only against widely-available
-                  #     libstdc++ symbols, so we relax the install step to
-                  #     dpkg -i --force-depends just for the sfpi package.
-                  #     We also reorder install_sfpi to run AFTER
-                  #     install_llvm: dpkg --force-depends leaves apt in
-                  #     a state where any subsequent apt-get install
-                  #     refuses to resolve new packages until the broken
-                  #     sfpi dep is fixed (apt suggests --fix-broken),
-                  #     so install_llvm must complete first while apt is
-                  #     still clean.
-                  sed -i \
-                    -e "/apt\.kitware\.com/d" \
-                    -e "/kitware-archive-keyring/d" \
-                    -e "s|apt-key add -|gpg --dearmor -o /etc/apt/trusted.gpg.d/apt-llvm-org.gpg|" \
-                    -e "s|apt-get install -y --allow-downgrades \$TEMP_DIR/\$sfpi_filename|dpkg -i --force-depends \"\$TEMP_DIR/\$sfpi_filename\"|" \
-                    -e "s|^    install_sfpi$|__TT_SWAP__|" \
-                    -e "s|^    install_llvm$|    install_sfpi|" \
-                    -e "s|__TT_SWAP__|    install_llvm|" \
-                    install_dependencies.sh
-                  # On Debian 12 the libstdc++6 version is 12.2.0, but
-                  # the upstream sfpi .deb declares
-                  # Depends: libstdc++6 (>= 12.3.0).
-                  # Bookworm does not bump gcc minor versions in stable,
-                  # and neither bookworm-backports nor bookworm-security
-                  # republishes libstdc++6 (gcc-13 is not in backports
-                  # either).  In practice the sfpi binaries link only
-                  # against widely-available libstdc++ symbols, so the
-                  # sed above relaxes the sfpi install line to
-                  # dpkg -i --force-depends.  No extra apt steps needed
-                  # here on bookworm.
-                  ;;
-              esac
+              patch_dir="/patches/${ID:-unknown}"
+              if [ -d "$patch_dir" ]; then
+                shopt -s nullglob
+                patches=("$patch_dir"/*.patch)
+                if [ ${#patches[@]} -gt 0 ]; then
+                  echo "Applying ${#patches[@]} patch(es) from $patch_dir"
+                  for p in "${patches[@]}"; do
+                    echo "--- $p ---"
+                    git apply --verbose "$p"
+                  done
+                fi
+              fi
               ./install_dependencies.sh --docker
               ./build_metal.sh
             ' 2>&1 | tee logs/build.log

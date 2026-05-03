@@ -1,0 +1,68 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: ttossj1 <ttossj1@example.com>
+Date: Mon, 4 May 2026 07:00:52 +0900
+Subject: [PATCH] prep_ubuntu_system: skip Kitware repo on non-Ubuntu (Debian)
+
+Kitware does not publish apt repositories for Debian codenames
+(bookworm, trixie, ...).  Adding the repo unconditionally makes
+apt-get update fail with HTTP 404 on the Release file, which aborts
+install_dependencies.sh on Debian.
+
+Wrap the Kitware setup in an ID=ubuntu guard.  Debian 12 ships CMake
+3.25 and Debian 13 ships 3.31, both satisfying tt-metal's >= 3.24
+baseline, so skipping the upgrade is functionally equivalent for
+those distros.
+
+Upstream-Status: Pending
+Distro-Scope: debian-12, debian-13
+---
+ install_dependencies.sh | 33 ++++++++++++++++++++-------------
+ 1 file changed, 20 insertions(+), 13 deletions(-)
+
+diff --git a/install_dependencies.sh b/install_dependencies.sh
+index 6bc9158..e0c4cf8 100755
+--- a/install_dependencies.sh
++++ b/install_dependencies.sh
+@@ -277,19 +277,26 @@ prep_ubuntu_system() {
+     # Also v20
+     echo "deb http://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-20 main" | tee /etc/apt/sources.list.d/llvm-20.list
+ 
+-    # Add Kitware repository for latest CMake
+-    # If the kitware-archive-keyring package has not been installed previously, manually obtain a copy of our signing key
+-    test -f /usr/share/doc/kitware-archive-keyring/copyright || wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+-
+-    # Add the repository to sources list and update
+-    echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $OS_CODENAME main" | tee /etc/apt/sources.list.d/kitware.list >/dev/null
+-    apt-get update
+-
+-    # If the kitware-archive-keyring package was not installed previously, remove the manually obtained key to make room for the package
+-    test -f /usr/share/doc/kitware-archive-keyring/copyright || rm /usr/share/keyrings/kitware-archive-keyring.gpg
+-
+-    # Install the kitware-archive-keyring package to ensure that your keyring stays up to date as keys are rotated
+-    apt-get install -y --no-install-recommends kitware-archive-keyring
++    # Add Kitware repository for latest CMake (Ubuntu only).
++    # Kitware does not publish apt repositories for Debian codenames
++    # (bookworm, trixie, ...); attempting to add the repo there causes
++    # apt-get update to fail with 404 on the Release file.  Debian 12
++    # ships CMake 3.25 and Debian 13 ships 3.31, both of which already
++    # satisfy tt-metal's >= 3.24 baseline, so the upgrade is unnecessary.
++    if [ "${ID:-}" = "ubuntu" ]; then
++        # If the kitware-archive-keyring package has not been installed previously, manually obtain a copy of our signing key
++        test -f /usr/share/doc/kitware-archive-keyring/copyright || wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
++
++        # Add the repository to sources list and update
++        echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $OS_CODENAME main" | tee /etc/apt/sources.list.d/kitware.list >/dev/null
++        apt-get update
++
++        # If the kitware-archive-keyring package was not installed previously, remove the manually obtained key to make room for the package
++        test -f /usr/share/doc/kitware-archive-keyring/copyright || rm /usr/share/keyrings/kitware-archive-keyring.gpg
++
++        # Install the kitware-archive-keyring package to ensure that your keyring stays up to date as keys are rotated
++        apt-get install -y --no-install-recommends kitware-archive-keyring
++    fi
+ 
+     # Add GCC toolchain repository for specific g++ versions if needed
+     case "$UBUNTU_CODENAME" in
+-- 
+2.53.0.windows.2
+
