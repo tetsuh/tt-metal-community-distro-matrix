@@ -26,6 +26,7 @@ RUN dnf -y install dnf-plugins-core epel-release \
         ca-certificates \
         glibc-langpack-en \
         procps-ng \
+        patch \
  && dnf clean all \
  && rm -rf /var/cache/dnf
 
