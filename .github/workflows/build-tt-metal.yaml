@@ -15,6 +15,8 @@ on:
           - linuxmint-22.2
           - linuxmint-22.1
           - linuxmint-21.3
+          - rocky-10
+          - rocky-9
         default: 'all'
       tt_metal_repo:
         description: 'Upstream tt-metal repository (owner/name)'
@@ -48,7 +50,7 @@ jobs:
         run: |
           set -eu
           if [ -z "${TARGET_OS}" ] || [ "${TARGET_OS}" = "all" ]; then
-            matrix='{"target_os":["linuxmint-21.3","linuxmint-22.1","linuxmint-22.2","linuxmint-22.3"]}'
+            matrix='{"target_os":["linuxmint-21.3","linuxmint-22.1","linuxmint-22.2","linuxmint-22.3","rocky-9","rocky-10"]}'
           else
             matrix=$(printf '{"target_os":["%s"]}' "${TARGET_OS}")
           fi
@@ -242,7 +244,7 @@ jobs:
           set -eu
           python3 scripts/update_compat_table.py \
             --artifacts-dir _artifacts \
-            --require-os linuxmint-21.3 linuxmint-22.1 linuxmint-22.2 linuxmint-22.3
+            --require-os linuxmint-21.3 linuxmint-22.1 linuxmint-22.2 linuxmint-22.3 rocky-9 rocky-10
 
       - name: Show diff
         run: |
