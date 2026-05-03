@@ -187,7 +187,7 @@ jobs:
                     -e "/kitware-archive-keyring/d" \
                     -e "s/ software-properties-common//" \
                     -e "s|apt-key add -|gpg --dearmor -o /etc/apt/trusted.gpg.d/apt-llvm-org.gpg|" \
-                    -e 's|apt-get install -y --allow-downgrades \$TEMP_DIR/\$sfpi_filename|dpkg -i --force-depends "$TEMP_DIR/$sfpi_filename"|' \
+                    -e "s|apt-get install -y --allow-downgrades \$TEMP_DIR/\$sfpi_filename|dpkg -i --force-depends \"\$TEMP_DIR/\$sfpi_filename\"|" \
                     install_dependencies.sh
                   # Debian 12's libstdc++6 is 12.2.0, but the upstream
                   # sfpi .deb declares Depends: libstdc++6 (>= 12.3.0).
