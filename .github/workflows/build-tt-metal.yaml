@@ -174,8 +174,9 @@ jobs:
                   #     is deprecated on bookworm.  Replace the legacy LLVM
                   #     key install with a gpg --dearmor write into
                   #     /etc/apt/trusted.gpg.d/, which works on both.
-                  #   * Debian 12's libstdc++6 is 12.2.0, but the upstream
-                  #     sfpi .deb declares Depends: libstdc++6 (>= 12.3.0).
+                  #   * On Debian 12 the libstdc++6 version is 12.2.0, but
+                  #     the upstream sfpi .deb declares
+                  #     Depends: libstdc++6 (>= 12.3.0).
                   #     Bookworm does not update gcc minor versions in
                   #     stable, and bookworm-backports does not republish
                   #     libstdc++6 / gcc-13.  In practice the sfpi
@@ -189,15 +190,16 @@ jobs:
                     -e "s|apt-key add -|gpg --dearmor -o /etc/apt/trusted.gpg.d/apt-llvm-org.gpg|" \
                     -e "s|apt-get install -y --allow-downgrades \$TEMP_DIR/\$sfpi_filename|dpkg -i --force-depends \"\$TEMP_DIR/\$sfpi_filename\"|" \
                     install_dependencies.sh
-                  # Debian 12's libstdc++6 is 12.2.0, but the upstream
-                  # sfpi .deb declares Depends: libstdc++6 (>= 12.3.0).
+                  # On Debian 12 the libstdc++6 version is 12.2.0, but
+                  # the upstream sfpi .deb declares
+                  # Depends: libstdc++6 (>= 12.3.0).
                   # Bookworm does not bump gcc minor versions in stable,
                   # and neither bookworm-backports nor bookworm-security
-                  # republishes libstdc++6 (gcc-13 isn't in backports
+                  # republishes libstdc++6 (gcc-13 is not in backports
                   # either).  In practice the sfpi binaries link only
                   # against widely-available libstdc++ symbols, so the
                   # sed above relaxes the sfpi install line to
-                  # `dpkg -i --force-depends`.  No extra apt steps needed
+                  # dpkg -i --force-depends.  No extra apt steps needed
                   # here on bookworm.
                   ;;
               esac
