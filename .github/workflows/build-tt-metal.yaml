@@ -165,11 +165,6 @@ jobs:
                   #     ships CMake 3.25 and 13 ships 3.31, both >= the 3.24
                   #     baseline required by tt-metal, so the Kitware upgrade
                   #     is not strictly necessary.
-                  #   * software-properties-common has been dropped from
-                  #     trixie main; we do not need add-apt-repository on
-                  #     Debian because the only PPA install_dependencies.sh
-                  #     adds (ubuntu-toolchain-r/test) is gated on
-                  #     UBUNTU_CODENAME == noble.
                   #   * apt-key has been removed from trixie altogether and
                   #     is deprecated on bookworm.  Replace the legacy LLVM
                   #     key install with a gpg --dearmor write into
@@ -186,7 +181,6 @@ jobs:
                   sed -i \
                     -e "/apt\.kitware\.com/d" \
                     -e "/kitware-archive-keyring/d" \
-                    -e "s/ software-properties-common//" \
                     -e "s|apt-key add -|gpg --dearmor -o /etc/apt/trusted.gpg.d/apt-llvm-org.gpg|" \
                     -e "s|apt-get install -y --allow-downgrades \$TEMP_DIR/\$sfpi_filename|dpkg -i --force-depends \"\$TEMP_DIR/\$sfpi_filename\"|" \
                     install_dependencies.sh
