@@ -6,17 +6,17 @@
 FROM quay.io/rockylinux/rockylinux:10
 
 ENV LANG=en_US.UTF-8 \
-    LC_ALL=en_US.UTF-8
+    LC_ALL=en_US.UTF-8 \
+    PATH=/usr/lib64/openmpi/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    PKG_CONFIG_PATH=/usr/lib64/openmpi/lib/pkgconfig \
+    LD_LIBRARY_PATH=/usr/lib64/openmpi/lib
 
-# Enable EPEL and CRB before installing the bootstrap packages —
-# see os/rocky/9/Dockerfile for the rationale (tt-metal's
-# install_dependencies.sh requires ninja-build / capstone-devel which
-# live in EPEL / CRB respectively, and the script does not enable
-# those repositories itself).
-#
-# Swap curl-minimal for the full curl package: the upstream image
-# ships curl-minimal, but tt-metal's install_dependencies.sh installs
-# the full `curl` package unconditionally and the two conflict.
+# See os/rocky/9/Dockerfile for the rationale behind every choice here:
+#  * EPEL + CRB are required for ninja-build / capstone-devel
+#  * curl-minimal must be swapped for full curl
+#  * patch / file / zlib-devel cover gaps in tt-metal prep_redhat_system
+#  * MPI environment variables expose the openmpi install under
+#    /usr/lib64/openmpi/ to pkg-config / runtime loaders.
 RUN dnf -y install dnf-plugins-core epel-release \
  && dnf config-manager --set-enabled crb \
  && dnf -y swap curl-minimal curl \
@@ -27,6 +27,8 @@ RUN dnf -y install dnf-plugins-core epel-release \
         glibc-langpack-en \
         procps-ng \
         patch \
+        file \
+        zlib-devel \
  && dnf clean all \
  && rm -rf /var/cache/dnf
 

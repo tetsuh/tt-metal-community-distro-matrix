@@ -16,7 +16,10 @@
 FROM quay.io/rockylinux/rockylinux:9
 
 ENV LANG=en_US.UTF-8 \
-    LC_ALL=en_US.UTF-8
+    LC_ALL=en_US.UTF-8 \
+    PATH=/usr/lib64/openmpi/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    PKG_CONFIG_PATH=/usr/lib64/openmpi/lib/pkgconfig \
+    LD_LIBRARY_PATH=/usr/lib64/openmpi/lib
 
 # Enable EPEL and CRB (CodeReady Builder) before installing the bootstrap
 # packages. tt-metal's install_dependencies.sh redhat path (prep_redhat_system)
@@ -31,6 +34,22 @@ ENV LANG=en_US.UTF-8 \
 # curl package: tt-metal's install_dependencies.sh installs `curl`
 # unconditionally, which conflicts with curl-minimal. Doing the swap once
 # here is cheaper than asking install_dependencies.sh to use --allowerasing.
+#
+# Bootstrap utilities beyond the upstream image baseline:
+#   sudo / git / ca-certificates / glibc-langpack-en / procps-ng — basic
+#     prerequisites of install_dependencies.sh and install.sh.
+#   patch — required by CPM (CMake package manager) to apply third-party
+#     patches; tt-metal's prep_redhat_system does not list it and the
+#     upstream image does not include it.
+#   file — used by the SFPI compiler probe (`xargs file ...`); missing
+#     from the upstream image and not installed by tt-metal.
+#   zlib-devel — needed by tt-metal's CMake (ZLIB::ZLIB); not installed
+#     by prep_redhat_system.
+#
+# The PATH / PKG_CONFIG_PATH / LD_LIBRARY_PATH entries above expose the
+# OpenMPI installation that tt-metal pulls in (Rocky packages OpenMPI
+# under /usr/lib64/openmpi/ and normally requires `module load
+# mpi/openmpi-x86_64` to make it visible).
 RUN dnf -y install dnf-plugins-core epel-release \
  && dnf config-manager --set-enabled crb \
  && dnf -y swap curl-minimal curl \
@@ -41,6 +60,8 @@ RUN dnf -y install dnf-plugins-core epel-release \
         glibc-langpack-en \
         procps-ng \
         patch \
+        file \
+        zlib-devel \
  && dnf clean all \
  && rm -rf /var/cache/dnf
 
