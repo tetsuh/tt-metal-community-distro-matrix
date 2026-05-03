@@ -4,10 +4,12 @@
 # so we simply layer a minimal bootstrap on top of it instead of impersonating
 # the distro from a base Ubuntu image. The bootstrap installs only what
 # tt-metal's install_dependencies.sh and tt-installer's install.sh take as a
-# precondition (sudo, git, locale data, ca-certificates, procps).
-# curl is intentionally omitted: the upstream image ships curl-minimal which
-# provides the curl binary; pulling in curl-full conflicts with curl-minimal
-# (`package curl-minimal-... conflicts with curl provided by curl-...`).
+# precondition (sudo, git, locale data, ca-certificates, procps-ng), enables
+# the EPEL and CRB repositories, swaps curl-minimal for the full curl
+# package (install_dependencies.sh installs curl unconditionally and the two
+# packages conflict), and adds a few extra utilities (patch, file, zlib-devel,
+# python3.11) that fill gaps in tt-metal's prep_redhat_system. See
+# os/rocky/README.md for a full list of workarounds and their rationale.
 #
 # We pull from quay.io because that is the publisher Rocky Linux operates
 # directly. Using ":9" pins to the rolling 9.x tag, matching how the Mint
