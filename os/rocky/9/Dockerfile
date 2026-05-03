@@ -26,8 +26,14 @@ ENV LANG=en_US.UTF-8 \
 # here matches the long-standing convention on RHEL-family systems that any
 # non-trivial development workload pulls from these repos, and parallels how
 # the Mint Dockerfiles enable the Mint package repository on top of Ubuntu.
+#
+# We also swap curl-minimal (shipped in the upstream image) for the full
+# curl package: tt-metal's install_dependencies.sh installs `curl`
+# unconditionally, which conflicts with curl-minimal. Doing the swap once
+# here is cheaper than asking install_dependencies.sh to use --allowerasing.
 RUN dnf -y install dnf-plugins-core epel-release \
  && dnf config-manager --set-enabled crb \
+ && dnf -y swap curl-minimal curl \
  && dnf -y install \
         sudo \
         git \

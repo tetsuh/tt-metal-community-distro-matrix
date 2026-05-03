@@ -13,9 +13,9 @@ available on a RHEL-family system:
 * **CRB** (CodeReady Builder) — provides `capstone-devel` and other
   development headers that tt-metal needs.
 
-`curl` is intentionally omitted because the upstream image already ships
-`curl-minimal`, and pulling in the full `curl` package conflicts with
-it.
+We also swap the upstream image's `curl-minimal` for the full `curl`
+package, because tt-metal's `install_dependencies.sh` installs the
+full `curl` unconditionally and the two packages conflict.
 
 This keeps the test surface as close as possible to what a user gets from
 `docker pull quay.io/rockylinux/rockylinux:N`, which is closer to the project's

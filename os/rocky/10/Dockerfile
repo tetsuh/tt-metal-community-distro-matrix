@@ -14,10 +14,12 @@ ENV LANG=en_US.UTF-8 \
 # live in EPEL / CRB respectively, and the script does not enable
 # those repositories itself).
 #
-# curl is intentionally omitted: the upstream image ships curl-minimal
-# which provides the curl binary; installing curl-full would conflict.
+# Swap curl-minimal for the full curl package: the upstream image
+# ships curl-minimal, but tt-metal's install_dependencies.sh installs
+# the full `curl` package unconditionally and the two conflict.
 RUN dnf -y install dnf-plugins-core epel-release \
  && dnf config-manager --set-enabled crb \
+ && dnf -y swap curl-minimal curl \
  && dnf -y install \
         sudo \
         git \
