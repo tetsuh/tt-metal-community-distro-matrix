@@ -145,7 +145,11 @@ jobs:
           # patches concrete.
           os_id=$(grep -E '^ID=' os-release.txt | head -n1 | cut -d= -f2 | tr -d '"')
           patch_dir="patches/${os_id}"
-          patch_count=$(find "$patch_dir" -maxdepth 1 -name '*.patch' -type f 2>/dev/null | wc -l)
+          if [ -d "$patch_dir" ]; then
+            patch_count=$(find "$patch_dir" -maxdepth 1 -name '*.patch' -type f | wc -l)
+          else
+            patch_count=0
+          fi
           patch_count=${patch_count:-0}
           echo "patch_count=$patch_count" >> "$GITHUB_OUTPUT"
 

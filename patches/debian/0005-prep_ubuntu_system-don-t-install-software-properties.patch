@@ -1,46 +1,48 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: ttossj1 <ttossj1@example.com>
-Date: Mon, 4 May 2026 08:48:24 +0900
+Date: Mon, 4 May 2026 10:00:48 +0900
 Subject: [PATCH] prep_ubuntu_system: don't install software-properties-common
- on Debian
+ on Debian 13
 
-software-properties-common is no longer packaged on Debian 13
-(trixie); it was dropped from the archive because Debian does not
-use PPAs and the package's only purpose is providing the
-add-apt-repository helper.  Installing it unconditionally on Debian
-fails with:
+software-properties-common provides /usr/bin/add-apt-repository.  On
+Debian 13 (trixie) the source package was dropped from the archive
+because Debian does not use PPAs and add-apt-repository has no useful
+purpose there; installing it unconditionally fails with:
 
   E: Unable to locate package software-properties-common
 
-In install_dependencies.sh the only call to add-apt-repository is
-gated on UBUNTU_CODENAME=noble (the Ubuntu 24.04 GCC toolchain PPA),
-which can never match on Debian.  So the package is not actually
-needed on Debian and can be skipped.
+It is tempting to drop the package on every Debian release, but on
+Debian 12 (bookworm) the bundled apt.llvm.org installer (llvm.sh) still
+hard-requires add-apt-repository -- it only stops probing for it on
+"new" Debian releases (trixie and forky).  So the patch keeps
+software-properties-common in the install set everywhere except on
+Debian 13+, where it is both unavailable and unneeded.
 
 Upstream-Status: Pending
-Distro-Scope: debian-12, debian-13
+Distro-Scope: debian-13
 ---
- install_dependencies.sh | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+ install_dependencies.sh | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
 
 diff --git a/install_dependencies.sh b/install_dependencies.sh
-index 678d26b..0f09d19 100755
+index 678d26b..460efc5 100755
 --- a/install_dependencies.sh
 +++ b/install_dependencies.sh
-@@ -269,7 +269,17 @@ prep_ubuntu_system() {
+@@ -269,7 +269,18 @@ prep_ubuntu_system() {
      echo "[INFO] Preparing Ubuntu/Debian system..."
      # Update package lists and install basic tools
      apt-get update
 -    apt-get install -y --no-install-recommends ca-certificates gpg lsb-release wget software-properties-common gnupg jq
 +    # software-properties-common provides 'add-apt-repository'.  It is
 +    # not packaged on Debian 13 (trixie) -- the source package was
-+    # dropped because Debian does not use PPAs.  This script's only
-+    # caller of add-apt-repository is gated on UBUNTU_CODENAME=noble,
-+    # which never matches on Debian, so we can safely drop the package
-+    # there.
-+    base_pkgs="ca-certificates gpg lsb-release wget gnupg jq"
-+    if [ "${ID:-}" != "debian" ]; then
-+	base_pkgs="$base_pkgs software-properties-common"
++    # dropped from the Debian archive because Debian does not use
++    # PPAs.  On Debian 13 we therefore drop the package; on Ubuntu
++    # and on Debian 12 (bookworm) the package still exists and is
++    # required by llvm.sh below, which probes for add-apt-repository
++    # unless it is running on a "new" Debian (trixie+).
++    base_pkgs="ca-certificates gpg lsb-release wget software-properties-common gnupg jq"
++    if [ "${ID:-}" = "debian" ] && [ "${VERSION_CODENAME:-}" = "trixie" ]; then
++	base_pkgs="ca-certificates gpg lsb-release wget gnupg jq"
 +    fi
 +    apt-get install -y --no-install-recommends $base_pkgs
  
