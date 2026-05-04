@@ -1,5 +1,5 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: ttossj1 <ttossj1@example.com>
+From: Tetsuya Hayashi <tetsu.h@gmail.com>
 Date: Mon, 4 May 2026 07:00:52 +0900
 Subject: [PATCH] prep_ubuntu_system: skip Kitware repo on non-Ubuntu (Debian)
 
