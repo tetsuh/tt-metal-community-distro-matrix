@@ -340,14 +340,26 @@ jobs:
               # also under /etc/yum.repos.d for the future RPM
               # rollout. Hits are recorded so that a follow-up PR can
               # surface them as evidence in the table if needed.
-              repo_files=""
-              if grep -Rli "tenstorrent" \
-                   /etc/apt/sources.list \
-                   /etc/apt/sources.list.d \
-                   /etc/yum.repos.d 2>/dev/null > /tmp/repo-hits; then
+              # NOTE: do not rely on grep's exit code -- on Debian
+              # /etc/apt/sources.list is absent and /etc/yum.repos.d
+              # does not exist, which makes grep -R exit with status 2
+              # even when matches were printed. Inspect the captured
+              # output instead.
+              : > /tmp/repo-hits
+              for path in /etc/apt/sources.list \
+                          /etc/apt/sources.list.d \
+                          /etc/apt/sources.list.d/*.sources \
+                          /etc/yum.repos.d; do
+                [ -e "$path" ] || continue
+                grep -RIli "tenstorrent" "$path" 2>/dev/null >> /tmp/repo-hits || true
+              done
+              # de-duplicate
+              if [ -s /tmp/repo-hits ]; then
+                sort -u /tmp/repo-hits -o /tmp/repo-hits
                 repo_files=$(tr "\n" "," < /tmp/repo-hits | sed "s/,$//")
                 repo_present=true
               else
+                repo_files=""
                 repo_present=false
               fi
 
