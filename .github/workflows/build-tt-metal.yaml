@@ -17,6 +17,8 @@ on:
           - linuxmint-21.3
           - rocky-10
           - rocky-9
+          - debian-13
+          - debian-12
         default: 'all'
       tt_metal_repo:
         description: 'Upstream tt-metal repository (owner/name)'
@@ -50,7 +52,7 @@ jobs:
         run: |
           set -eu
           if [ -z "${TARGET_OS}" ] || [ "${TARGET_OS}" = "all" ]; then
-            matrix='{"target_os":["linuxmint-21.3","linuxmint-22.1","linuxmint-22.2","linuxmint-22.3","rocky-9","rocky-10"]}'
+            matrix='{"target_os":["linuxmint-21.3","linuxmint-22.1","linuxmint-22.2","linuxmint-22.3","rocky-9","rocky-10","debian-12","debian-13"]}'
           else
             matrix=$(printf '{"target_os":["%s"]}' "${TARGET_OS}")
           fi
@@ -133,8 +135,65 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p logs
+
+          # Determine which (if any) patches we have for this distro.
+          # When patches/<id>/ contains *.patch files, we run a "vanilla"
+          # pre-flight pass first to record whether the unpatched
+          # install_dependencies.sh from tt-metal can complete on this
+          # distro.  This populates the "Vanilla" column in the
+          # compatibility table and makes the contribution case for the
+          # patches concrete.
+          os_id=$(grep -E '^ID=' os-release.txt | head -n1 | cut -d= -f2 | tr -d '"')
+          patch_dir="patches/${os_id}"
+          if [ -d "$patch_dir" ]; then
+            patch_count=$(find "$patch_dir" -maxdepth 1 -name '*.patch' -type f | wc -l)
+          else
+            patch_count=0
+          fi
+          patch_count=${patch_count:-0}
+          echo "patch_count=$patch_count" >> "$GITHUB_OUTPUT"
+
+          vanilla_status="na"
+          if [ "$patch_count" -gt 0 ]; then
+            echo "::group::Vanilla pre-flight (no patches)"
+            # In the vanilla pass we only run install_dependencies.sh.
+            # This is the script the patches actually modify, and on the
+            # distros we currently target (Debian 12/13) it is also where
+            # the unpatched script fails.  Skipping build_metal.sh here
+            # keeps CI time bounded; in the rare case where vanilla
+            # install_dependencies.sh succeeds but build_metal.sh would
+            # fail because of one of our patches, the patched run below
+            # will catch it.
+            set +e
+            docker run --rm \
+              -v "${PWD}/tt-metal:/workspace/tt-metal" \
+              -w /workspace/tt-metal \
+              -e TT_METAL_HOME=/workspace/tt-metal \
+              "${{ steps.os.outputs.image_tag }}" \
+              bash -lc '
+                set -eux
+                git config --global --add safe.directory "*"
+                cat /etc/os-release
+                ./install_dependencies.sh --docker
+              ' 2>&1 | tee logs/build-vanilla.log
+            vanilla_rc=${PIPESTATUS[0]}
+            set -e
+            if [ "$vanilla_rc" -eq 0 ]; then
+              vanilla_status="success"
+            else
+              vanilla_status="failure"
+            fi
+            echo "Vanilla install_dependencies.sh: $vanilla_status (rc=$vanilla_rc)"
+            echo "::endgroup::"
+          else
+            echo "No patches under $patch_dir; vanilla pass is identical to the patched pass."
+          fi
+          echo "vanilla_status=$vanilla_status" >> "$GITHUB_OUTPUT"
+
+          echo "::group::Patched build"
           docker run --rm \
             -v "${PWD}/tt-metal:/workspace/tt-metal" \
+            -v "${PWD}/patches:/patches:ro" \
             -w /workspace/tt-metal \
             -e TT_METAL_HOME=/workspace/tt-metal \
             "${{ steps.os.outputs.image_tag }}" \
@@ -147,9 +206,28 @@ jobs:
               # "No VERSION specified".
               git config --global --add safe.directory "*"
               cat /etc/os-release
+              # Apply OS-specific patches to tt-metal that are required for the
+              # build/install scripts to run on the target distro.  Patches are
+              # kept as standalone files under patches/<distro>/ so that they
+              # can be reviewed individually and later contributed upstream.
+              # See patches/README.md for the policy and per-patch status.
+              . /etc/os-release
+              patch_dir="/patches/${ID:-unknown}"
+              if [ -d "$patch_dir" ]; then
+                shopt -s nullglob
+                patches=("$patch_dir"/*.patch)
+                if [ ${#patches[@]} -gt 0 ]; then
+                  echo "Applying ${#patches[@]} patch(es) from $patch_dir"
+                  for p in "${patches[@]}"; do
+                    echo "--- $p ---"
+                    git apply --verbose "$p"
+                  done
+                fi
+              fi
               ./install_dependencies.sh --docker
               ./build_metal.sh
             ' 2>&1 | tee logs/build.log
+          echo "::endgroup::"
 
       - name: Verify build artifacts
         id: artifacts
@@ -193,6 +271,12 @@ jobs:
           set -eu
           mkdir -p logs
           status="${{ job.status }}"
+          vanilla="${{ steps.build.outputs.vanilla_status }}"
+          patch_count="${{ steps.build.outputs.patch_count }}"
+          # Defaults if the build step did not run far enough to set
+          # outputs (e.g. checkout failed).
+          vanilla="${vanilla:-na}"
+          patch_count="${patch_count:-0}"
           cat > logs/status.json <<EOF
           {
             "target_os": "${{ matrix.target_os }}",
@@ -204,6 +288,8 @@ jobs:
             "run_id":   "${{ github.run_id }}",
             "run_url":  "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
             "status":   "${status}",
+            "vanilla_status": "${vanilla}",
+            "patch_count":    ${patch_count},
             "artifact_dir": "${{ steps.artifacts.outputs.found_dir }}"
           }
           EOF
@@ -244,7 +330,7 @@ jobs:
           set -eu
           python3 scripts/update_compat_table.py \
             --artifacts-dir _artifacts \
-            --require-os linuxmint-21.3 linuxmint-22.1 linuxmint-22.2 linuxmint-22.3 rocky-9 rocky-10
+            --require-os linuxmint-21.3 linuxmint-22.1 linuxmint-22.2 linuxmint-22.3 rocky-9 rocky-10 debian-12 debian-13
 
       - name: Show diff
         run: |

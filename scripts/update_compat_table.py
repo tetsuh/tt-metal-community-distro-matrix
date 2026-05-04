@@ -37,6 +37,8 @@ ROW_ORDER: list[tuple[str, str]] = [
     ("linuxmint-22.1", "Linux Mint 22.1"),
     ("linuxmint-21.3", "Linux Mint 21.3"),
     ("ubuntu-26.04", "Ubuntu 26.04"),
+    ("debian-13", "Debian 13"),
+    ("debian-12", "Debian 12"),
     ("rocky-10", "Rocky Linux 10"),
     ("rocky-9", "Rocky Linux 9"),
 ]
@@ -106,7 +108,7 @@ def render(by_os: dict[str, dict]) -> str:
     lines.append(f"**Last updated:** {ts}")
     lines.append(f"**Tested tt-metal:** `{ref}@{sha_short}`")
     lines.append("")
-    lines.append("| Distribution | tt-metal build | tt-installer | Logs |")
+    lines.append("| Distribution | Vanilla | With patches | Logs |")
     lines.append("|---|:-:|:-:|---|")
     known_oses = {os_id for os_id, _ in ROW_ORDER}
     for os_id in by_os:
@@ -118,14 +120,40 @@ def render(by_os: dict[str, dict]) -> str:
     for os_id, name in ROW_ORDER:
         data = by_os.get(os_id)
         if data:
-            status = (data.get("status") or "").lower()
-            emoji = STATUS_EMOJI.get(status, "⏳")
+            patched_status = (data.get("status") or "").lower()
+            patched_emoji = STATUS_EMOJI.get(patched_status, "⏳")
             run_url = data.get("run_url", "")
             log_cell = f"[run]({run_url})" if run_url else "—"
+
+            try:
+                patch_count = int(data.get("patch_count") or 0)
+            except (TypeError, ValueError):
+                patch_count = 0
+            vanilla_status = (data.get("vanilla_status") or "").lower()
+
+            if patch_count == 0:
+                # No patches needed for this distro: vanilla and patched
+                # are by definition identical.  Showing the same emoji in
+                # both columns with a "(no patches)" note keeps the
+                # contrast visible without misrepresenting the data.
+                vanilla_cell = patched_emoji
+                patched_cell = f"{patched_emoji} (no patches)"
+            else:
+                # Patches exist.  vanilla_status comes from the pre-flight
+                # pass that runs install_dependencies.sh without applying
+                # them; older artifacts may not have this field, in which
+                # case we leave the cell as ⏳ rather than guess.
+                vanilla_cell = STATUS_EMOJI.get(vanilla_status, "⏳")
+                patches_dir = f"patches/{(data.get('distro') or '').lower()}"
+                noun = "patch" if patch_count == 1 else "patches"
+                patched_cell = (
+                    f"{patched_emoji} ([{patch_count} {noun}]({patches_dir}/))"
+                )
         else:
-            emoji = "⏳"
+            vanilla_cell = "⏳"
+            patched_cell = "⏳"
             log_cell = "—"
-        lines.append(f"| {name} | {emoji} | — | {log_cell} |")
+        lines.append(f"| {name} | {vanilla_cell} | {patched_cell} | {log_cell} |")
     return "\n".join(lines)
 
 
