@@ -25,6 +25,26 @@ A compatibility guardrail that continuously monitors whether [tt-metal](https://
 | Rocky Linux 9 | ⏳ | ⏳ | — |
 <!-- COMPAT_TABLE_END -->
 
+### tt-installer verification (install phase)
+
+The build pipeline above only exercises the deps/build path of `tt-metal` itself. As a separate phase, we also exercise the official [`tt-installer`](https://github.com/tenstorrent/tt-installer) on each distro it claims to support, to confirm that the Tenstorrent system-level package repository can be configured end-to-end on a clean base image. Hardware-bound steps (KMD, hugepages, firmware flash, container runtime, Metalium/Forge containers) are skipped — this is a guardrail against regressions in repo registration and base-package install, not a substitute for a real Tenstorrent host.
+
+<!-- INSTALL_TABLE_START -->
+*Auto-generated. tt-installer phase is opt-in per OS; rows marked `—` are not yet wired into CI.*
+
+| Distribution | tt-installer | Repo configured | Logs |
+|---|:-:|:-:|---|
+| Linux Mint 22.3 | — | — | — |
+| Linux Mint 22.2 | — | — | — |
+| Linux Mint 22.1 | — | — | — |
+| Linux Mint 21.3 | — | — | — |
+| Ubuntu 26.04 | — | — | — |
+| Debian 13 | ⏳ | ⏳ | — |
+| Debian 12 | — | — | — |
+| Rocky Linux 10 | — | — | — |
+| Rocky Linux 9 | — | — | — |
+<!-- INSTALL_TABLE_END -->
+
 ### Legend
 
 | Symbol | Meaning |
@@ -39,6 +59,11 @@ A compatibility guardrail that continuously monitors whether [tt-metal](https://
 - **Vanilla** — result of running tt-metal's unmodified `install_dependencies.sh` on the target distro. This is the experience an upstream contributor gets without this repo's patches.
 - **With patches** — result of the full `install_dependencies.sh` + `build_metal.sh` pipeline after applying the patches in [`patches/<distro>/`](patches/). The cell links to the patch directory and shows how many patches are applied.
 - A `(no patches)` annotation in the **With patches** column means the distro builds cleanly upstream and no patches from this repo are needed; the two columns are then by definition identical.
+
+**Install-phase columns** (separate table)
+
+- **tt-installer** — exit status of the official installer (pinned release) when run with all hardware-dependent components disabled. The cell shows the pinned installer version when available.
+- **Repo configured** — whether the installer registered the `ppa.tenstorrent.com` package repository in `/etc/apt/sources.list*` or `/etc/yum.repos.d/`, verified by content-grep inside the post-install container.
 
 Patches in this repository are kept as standalone `git format-patch` files so they can be reviewed individually and contributed back upstream. See [patches/README.md](patches/README.md) for the policy and per-patch upstream status.
 
