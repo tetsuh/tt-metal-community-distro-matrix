@@ -54,11 +54,23 @@ fi
 if [ "${patch_count}" -eq 0 ]; then
   echo "No installer patches for ${distro}; skipping argbash regeneration."
 else
-  echo "::group::Install argbash + m4 (host)"
-  sudo apt-get update
+  echo "::group::Install argbash (release tarball) + m4/patch (apt)"
+  # argbash is not in ubuntu-latest's default apt sources, so pull a
+  # pinned release tarball directly from GitHub. argbash itself is a
+  # pure bash script; it just needs m4 + patch from apt.
+  argbash_release="${ARGBASH_VERSION:-2.10.0}"
+  argbash_tarball_url="https://github.com/matejak/argbash/archive/refs/tags/${argbash_release}.tar.gz"
+  curl -fL --retry 3 --retry-delay 5 -o "${stage}/argbash.tar.gz" "${argbash_tarball_url}"
+  tar -xzf "${stage}/argbash.tar.gz" -C "${stage}"
+  argbash_bin="${stage}/argbash-${argbash_release}/bin/argbash"
+  if [ ! -x "${argbash_bin}" ]; then
+    echo "::error::argbash binary not found at ${argbash_bin} after extracting ${argbash_tarball_url}"
+    exit 1
+  fi
+  sudo DEBIAN_FRONTEND=noninteractive apt-get update
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    argbash m4 patch
-  argbash_version="$(argbash --version 2>&1 | head -n1)"
+    m4 patch
+  argbash_version="$("${argbash_bin}" --version 2>&1 | head -n1)"
   echo "argbash: ${argbash_version}"
   echo "::endgroup::"
 
@@ -78,7 +90,7 @@ else
   # target) is byte-for-byte identical to the released install.sh.
   # This bounds argbash drift: we accept differences anywhere else
   # in install.sh but require parity in the block we patch.
-  argbash "${stage}/install.m4" -o "${stage}/install.regen.sh"
+  "${argbash_bin}" "${stage}/install.m4" -o "${stage}/install.regen.sh"
   python3 - "${stage}/install.sh" "${stage}/install.regen.sh" <<'PY'
 import re
 import sys
@@ -124,7 +136,7 @@ PY
   echo "::endgroup::"
 
   echo "::group::Regenerate install-patched.sh"
-  argbash "${stage}/install.m4.patched" -o /tmp/install-patched.sh
+  "${argbash_bin}" "${stage}/install.m4.patched" -o /tmp/install-patched.sh
   chmod +x /tmp/install-patched.sh
   echo "patched install.sh size: $(wc -c </tmp/install-patched.sh) bytes"
   echo "::endgroup::"
