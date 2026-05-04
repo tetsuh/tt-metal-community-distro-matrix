@@ -12,15 +12,17 @@ A compatibility guardrail that continuously monitors whether [tt-metal](https://
 **Last updated:** 2026-05-01 11:58 UTC
 **Tested tt-metal:** `main@b3e8eb6`
 
-| Distribution | tt-metal build | tt-installer | Logs |
+| Distribution | Vanilla | With patches | Logs |
 |---|:-:|:-:|---|
-| Linux Mint 22.3 | ✅ | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25204220658) |
-| Linux Mint 22.2 | ✅ | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25204220658) |
-| Linux Mint 22.1 | ✅ | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25204220658) |
-| Linux Mint 21.3 | ✅ | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25204220658) |
-| Ubuntu 26.04 | ⏳ | — | — |
-| Rocky Linux 10 | ⏳ | — | — |
-| Rocky Linux 9 | ⏳ | — | — |
+| Linux Mint 22.3 | ✅ | ✅ (no patches) | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25204220658) |
+| Linux Mint 22.2 | ✅ | ✅ (no patches) | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25204220658) |
+| Linux Mint 22.1 | ✅ | ✅ (no patches) | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25204220658) |
+| Linux Mint 21.3 | ✅ | ✅ (no patches) | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25204220658) |
+| Ubuntu 26.04 | ⏳ | ⏳ | — |
+| Debian 13 | ⏳ | ⏳ | — |
+| Debian 12 | ⏳ | ⏳ | — |
+| Rocky Linux 10 | ⏳ | ⏳ | — |
+| Rocky Linux 9 | ⏳ | ⏳ | — |
 <!-- COMPAT_TABLE_END -->
 
 ### Legend
@@ -29,11 +31,16 @@ A compatibility guardrail that continuously monitors whether [tt-metal](https://
 |---|---|
 | ✅ | Pipeline completed successfully on the latest run |
 | ❌ | Pipeline failed; see the linked log for details |
-| ❌ `deps` / `build` / `install` / `test` | Failure with category hint |
 | ⏳ | Scheduled but not yet executed |
 | — | Not applicable for this distribution / phase |
 
-The `tt-installer` column is added once Burst 2 lands; until then, it shows `—` for all rows.
+**Columns**
+
+- **Vanilla** — result of running tt-metal's unmodified `install_dependencies.sh` on the target distro. This is the experience an upstream contributor gets without this repo's patches.
+- **With patches** — result of the full `install_dependencies.sh` + `build_metal.sh` pipeline after applying the patches in [`patches/<distro>/`](patches/). The cell links to the patch directory and shows how many patches are applied.
+- A `(no patches)` annotation in the **With patches** column means the distro builds cleanly upstream and no patches from this repo are needed; the two columns are then by definition identical.
+
+Patches in this repository are kept as standalone `git format-patch` files so they can be reviewed individually and contributed back upstream. See [patches/README.md](patches/README.md) for the policy and per-patch upstream status.
 
 ## Repository layout
 
