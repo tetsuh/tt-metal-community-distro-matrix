@@ -1,0 +1,50 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tetsuya Hayashi <tetsu.h@gmail.com>
+Date: Mon, 4 May 2026 00:00:00 +0900
+Subject: [PATCH] installer: prefer UBUNTU_CODENAME for Ubuntu derivatives
+
+On Ubuntu-derivative distributions (e.g. Linux Mint), the
+``VERSION_CODENAME`` field in ``/etc/os-release`` carries the
+*derivative* codename (``wilma``, ``xia``, ``zara`` ...) rather than the
+upstream Ubuntu codename (``noble`` / ``jammy``).  The Tenstorrent PPA
+does not publish per-derivative repositories, so the URL
+``https://ppa.tenstorrent.com/ubuntu/<derivative-codename>`` returns 404
+and the subsequent ``apt-get update`` aborts the whole installer.
+
+Prefer ``UBUNTU_CODENAME`` (which Ubuntu derivatives set to the upstream
+codename) and fall back to ``VERSION_CODENAME`` for vanilla Ubuntu.
+Fail loudly when neither is set so we never silently produce a broken
+``sources.list`` entry.
+
+Tested on:
+  * Ubuntu 24.04 (vanilla)            -> uses VERSION_CODENAME=noble
+  * Linux Mint 22.x (wilma/xia/zara)  -> uses UBUNTU_CODENAME=noble
+  * Linux Mint 21.3 (virginia)        -> uses UBUNTU_CODENAME=jammy
+
+Upstream-Status: Pending [tenstorrent/tt-installer]
+Signed-off-by: Tetsuya Hayashi <tetsu.h@gmail.com>
+---
+ install.m4 | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/install.m4 b/install.m4
+index 0000000..0000001 100644
+--- a/install.m4
++++ b/install.m4
+@@ -736,7 +736,13 @@ install_tt_repos () {
+ 		"ubuntu")
+ 			# Add the apt listing
+ 			# shellcheck disable=2002
+-			echo "deb [signed-by=/etc/apt/keyrings/tt-pkg-key.asc] https://ppa.tenstorrent.com/ubuntu/ $( cat /etc/os-release | grep "^VERSION_CODENAME=" | sed 's/^VERSION_CODENAME=//' ) main" | sudo tee /etc/apt/sources.list.d/tenstorrent.list > /dev/null
++			# Prefer UBUNTU_CODENAME (set to the upstream codename on Ubuntu derivatives
++			# such as Linux Mint) and fall back to VERSION_CODENAME for vanilla Ubuntu.
++			codename=$(. /etc/os-release && printf '%s' "${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}")
++			if [[ -z "${codename}" ]]; then
++				error_exit "Could not determine apt repository codename from /etc/os-release (need UBUNTU_CODENAME or VERSION_CODENAME)"
++			fi
++			echo "deb [signed-by=/etc/apt/keyrings/tt-pkg-key.asc] https://ppa.tenstorrent.com/ubuntu/ ${codename} main" | sudo tee /etc/apt/sources.list.d/tenstorrent.list > /dev/null
+ 
+ 			# Setup the keyring
+ 			sudo mkdir -p /etc/apt/keyrings; sudo chmod 755 /etc/apt/keyrings
+-- 
+2.43.0

@@ -166,40 +166,62 @@ def render(by_os: dict[str, dict]) -> str:
 def render_install(by_os: dict[str, dict]) -> str:
     """Render the tt-installer verification table.
 
-    The install phase is independent of the deps/build vanilla-vs-patched
-    distinction (tt-installer is a single official tool, not something this
-    repo patches). It therefore lives in its own table with its own
-    columns. Rows for OSes not yet wired into install-phase CI render as
-    ``—`` rather than ⏳ to make clear they are intentionally
-    out-of-scope for now and not just queued.
+    Schema mirrors the build (deps/build) table: a Vanilla column shows
+    the result of the released ``install.sh`` and a "With patches"
+    column shows the result of running install.sh after applying the
+    patches in ``patches/<distro>/installer/``. OSes that need no
+    installer patches (``install_patch_count == 0``) synthesise the
+    patched cell from the vanilla result and tag it ``(no patches)`` so
+    the column is never empty.
     """
     lines: list[str] = []
     lines.append(INSTALL_HEADER_NOTE)
     lines.append("")
-    lines.append("| Distribution | tt-installer | Repo configured | Logs |")
+    lines.append("| Distribution | Vanilla | With patches | Logs |")
     lines.append("|---|:-:|:-:|---|")
     for os_id, name in ROW_ORDER:
         data = by_os.get(os_id) or {}
-        install_status = (data.get("install_status") or "na").lower()
-        if install_status == "na":
+        # Prefer the new per-leg fields; fall back to the legacy
+        # install_* keys so old artifacts (one cycle of overlap) still
+        # render.
+        vanilla_status = (
+            data.get("install_status_vanilla")
+            or data.get("install_status")
+            or "na"
+        ).lower()
+        patched_status = (data.get("install_status_patched") or "na").lower()
+        try:
+            install_patch_count = int(data.get("install_patch_count") or 0)
+        except (TypeError, ValueError):
+            install_patch_count = 0
+
+        if vanilla_status == "na":
             lines.append(f"| {name} | — | — | — |")
             continue
-        installer_emoji = STATUS_EMOJI.get(install_status, "⏳")
-        repo_present = data.get("install_repo_present")
-        if repo_present is True:
-            repo_cell = "✅"
-        elif repo_present is False:
-            repo_cell = "❌"
-        else:
-            repo_cell = "—"
+
+        vanilla_emoji = STATUS_EMOJI.get(vanilla_status, "⏳")
         installer_version = data.get("installer_version") or ""
-        if installer_version:
-            installer_cell = f"{installer_emoji} (`{installer_version}`)"
+        version_suffix = f" (`{installer_version}`)" if installer_version else ""
+        vanilla_cell = f"{vanilla_emoji}{version_suffix}"
+
+        if install_patch_count == 0:
+            # No installer patches for this distro -> the patched
+            # column is by definition the vanilla result.
+            patched_cell = f"{vanilla_emoji} (no patches)"
         else:
-            installer_cell = installer_emoji
+            patched_emoji = STATUS_EMOJI.get(patched_status, "⏳")
+            patches_dir = (
+                data.get("install_patch_dir")
+                or f"patches/{(data.get('distro') or '').lower()}/installer"
+            )
+            noun = "patch" if install_patch_count == 1 else "patches"
+            patched_cell = (
+                f"{patched_emoji} ([{install_patch_count} {noun}]({patches_dir}/))"
+            )
+
         run_url = data.get("run_url", "")
         log_cell = f"[run]({run_url})" if run_url else "—"
-        lines.append(f"| {name} | {installer_cell} | {repo_cell} | {log_cell} |")
+        lines.append(f"| {name} | {vanilla_cell} | {patched_cell} | {log_cell} |")
     return "\n".join(lines)
 
 
