@@ -32,6 +32,13 @@ on:
 permissions:
   contents: read
 
+# Pinned tt-installer release used by the install-phase verification.
+# Bump this manually after reviewing the upstream release notes; we
+# pin so that compatibility regressions can only be introduced by
+# changes in this repo, in tt-metal, or in the target distro images.
+env:
+  TT_INSTALLER_VERSION: v2.2.1
+
 # Only one full-matrix run at a time.  Older runs are cancelled so the
 # README auto-update never sees a stale matrix overwriting a newer one.
 concurrency:
@@ -265,6 +272,114 @@ jobs:
           ls -la tt-metal/ || true
           exit 1
 
+      - name: Run tt-installer (install phase)
+        id: install
+        # Install-phase verification is opt-in per OS. tt-installer's
+        # upstream compatibility doc lists Debian 13 as officially
+        # supported, so that is the first OS we wire up. Other OSes
+        # in the matrix will be enabled in follow-up PRs once we have
+        # a clear picture of any patches they need.
+        if: matrix.target_os == 'debian-13'
+        continue-on-error: true
+        env:
+          IMAGE_TAG: ${{ steps.os.outputs.image_tag }}
+          INSTALLER_VERSION: ${{ env.TT_INSTALLER_VERSION }}
+        run: |
+          set -o pipefail
+          mkdir -p logs
+
+          echo "::group::tt-installer ${INSTALLER_VERSION} (fresh container)"
+          # Run the installer in a *fresh* container of the same base
+          # image so that any side-effects of tt-metal's
+          # install_dependencies.sh do not influence the result. The
+          # post-condition (Tenstorrent apt source registered) is
+          # checked inside the same `docker run` since `--rm` removes
+          # the container on exit.
+          set +e
+          docker run --rm \
+            -e INSTALLER_VERSION="${INSTALLER_VERSION}" \
+            "${IMAGE_TAG}" \
+            bash -lc '
+              set -u
+              cat /etc/os-release
+              # Debian 13 base image does not ship curl/sudo by default.
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                curl ca-certificates sudo
+
+              url="https://github.com/tenstorrent/tt-installer/releases/download/${INSTALLER_VERSION}/install.sh"
+              curl -fL --retry 3 --retry-delay 5 -o /tmp/install.sh "$url"
+              chmod +x /tmp/install.sh
+
+              set +e
+              # Skip everything that needs hardware, kernel headers or
+              # external image pulls. We only want to validate that the
+              # installer runs to completion and registers the
+              # Tenstorrent package repository on this distro.
+              /tmp/install.sh \
+                --mode-non-interactive \
+                --no-install-kmd \
+                --no-install-hugepages \
+                --install-container-runtime=no \
+                --no-install-tt-flash \
+                --no-install-tt-smi \
+                --no-install-tt-topology \
+                --no-install-sfpi \
+                --no-install-inference-server \
+                --no-install-studio \
+                --no-install-metalium-container \
+                --no-install-forge-container \
+                --update-firmware=off \
+                --reboot-option=never
+              installer_rc=$?
+              set -e
+
+              # Post-condition: the installer must register the
+              # Tenstorrent package source. Search by content (not
+              # filename) across all the locations apt looks at, and
+              # also under /etc/yum.repos.d for the future RPM
+              # rollout. Hits are recorded so that a follow-up PR can
+              # surface them as evidence in the table if needed.
+              repo_files=""
+              if grep -Rli "tenstorrent" \
+                   /etc/apt/sources.list \
+                   /etc/apt/sources.list.d \
+                   /etc/yum.repos.d 2>/dev/null > /tmp/repo-hits; then
+                repo_files=$(tr "\n" "," < /tmp/repo-hits | sed "s/,$//")
+                repo_present=true
+              else
+                repo_present=false
+              fi
+
+              echo "INSTALLER_RC=${installer_rc}"
+              echo "REPO_PRESENT=${repo_present}"
+              echo "REPO_FILES=${repo_files}"
+              exit "${installer_rc}"
+            ' 2>&1 | tee logs/install-tt-installer.log
+          installer_overall_rc=${PIPESTATUS[0]}
+          set -e
+          echo "::endgroup::"
+
+          # Parse the structured markers from the captured log so that
+          # the workflow step output reflects the in-container state
+          # even if `--rm` later wiped the container.
+          repo_present=$(grep -E '^REPO_PRESENT=' logs/install-tt-installer.log \
+                         | tail -n1 | cut -d= -f2)
+          repo_files=$(grep -E '^REPO_FILES='   logs/install-tt-installer.log \
+                       | tail -n1 | cut -d= -f2-)
+          repo_present=${repo_present:-false}
+          if [ "$installer_overall_rc" -eq 0 ] && [ "$repo_present" = "true" ]; then
+            install_status=success
+          else
+            install_status=failure
+          fi
+          echo "install_status=$install_status"           >> "$GITHUB_OUTPUT"
+          echo "install_repo_present=$repo_present"       >> "$GITHUB_OUTPUT"
+          echo "install_repo_files=$repo_files"           >> "$GITHUB_OUTPUT"
+          echo "install_installer_rc=$installer_overall_rc" >> "$GITHUB_OUTPUT"
+          echo "installer_version=${INSTALLER_VERSION}"   >> "$GITHUB_OUTPUT"
+          echo "tt-installer ${INSTALLER_VERSION}: $install_status (rc=$installer_overall_rc, repo_present=$repo_present)"
+
       - name: Write status JSON
         if: always()
         run: |
@@ -273,10 +388,34 @@ jobs:
           status="${{ job.status }}"
           vanilla="${{ steps.build.outputs.vanilla_status }}"
           patch_count="${{ steps.build.outputs.patch_count }}"
+          install_status="${{ steps.install.outputs.install_status }}"
+          install_repo_present="${{ steps.install.outputs.install_repo_present }}"
+          install_repo_files="${{ steps.install.outputs.install_repo_files }}"
+          install_rc="${{ steps.install.outputs.install_installer_rc }}"
+          installer_version="${{ steps.install.outputs.installer_version }}"
           # Defaults if the build step did not run far enough to set
           # outputs (e.g. checkout failed).
           vanilla="${vanilla:-na}"
           patch_count="${patch_count:-0}"
+          # When the install step is skipped (most OSes today) we
+          # emit "na" rather than "skipped" so that the table renders
+          # an explicit n/a marker rather than a "scheduled" hourglass.
+          install_status="${install_status:-na}"
+          # JSON booleans/null for repo_present so old artifacts
+          # remain easy to filter.
+          if [ -z "${install_repo_present}" ]; then
+            install_repo_present_json=null
+          elif [ "${install_repo_present}" = "true" ]; then
+            install_repo_present_json=true
+          else
+            install_repo_present_json=false
+          fi
+          install_rc="${install_rc:-}"
+          if [ -z "${install_rc}" ]; then
+            install_rc_json=null
+          else
+            install_rc_json=${install_rc}
+          fi
           cat > logs/status.json <<EOF
           {
             "target_os": "${{ matrix.target_os }}",
@@ -290,6 +429,11 @@ jobs:
             "status":   "${status}",
             "vanilla_status": "${vanilla}",
             "patch_count":    ${patch_count},
+            "install_status": "${install_status}",
+            "install_repo_present": ${install_repo_present_json},
+            "install_repo_files":   "${install_repo_files}",
+            "install_installer_rc": ${install_rc_json},
+            "installer_version":    "${installer_version}",
             "artifact_dir": "${{ steps.artifacts.outputs.found_dir }}"
           }
           EOF
