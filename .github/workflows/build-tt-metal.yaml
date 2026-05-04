@@ -274,12 +274,12 @@ jobs:
 
       - name: Run tt-installer (install phase)
         id: install
-        # Install-phase verification is opt-in per OS. tt-installer's
-        # upstream compatibility doc lists Debian 13 as officially
-        # supported, so that is the first OS we wire up. Other OSes
-        # in the matrix will be enabled in follow-up PRs once we have
-        # a clear picture of any patches they need.
-        if: matrix.target_os == 'debian-13'
+        # Install-phase verification is opt-in per OS. Currently enabled
+        # for Debian 12/13 (officially supported by tt-installer) and
+        # Rocky 9/10 (handled via tt-installer's rhel/centos fallback,
+        # which writes the Fedora yum repo). Linux Mint requires a
+        # codename workaround and is tracked separately.
+        if: matrix.target_os == 'debian-12' || matrix.target_os == 'debian-13' || matrix.target_os == 'rocky-9' || matrix.target_os == 'rocky-10'
         continue-on-error: true
         env:
           IMAGE_TAG: ${{ steps.os.outputs.image_tag }}
@@ -302,10 +302,22 @@ jobs:
             bash -lc '
               set -u
               cat /etc/os-release
-              # Debian 13 base image does not ship curl/sudo by default.
-              apt-get update
-              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-                curl ca-certificates sudo
+              # Bring the base image up to a state where tt-installer
+              # can operate (curl/sudo/ca-certificates). Detect the
+              # package manager rather than branching on the matrix
+              # target so each base image is treated by its own family.
+              if command -v apt-get >/dev/null 2>&1; then
+                apt-get update
+                DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                  curl ca-certificates sudo
+              elif command -v dnf >/dev/null 2>&1; then
+                # --allowerasing handles curl-minimal vs curl conflicts
+                # on Rocky 10-style minimal images.
+                dnf install -y --allowerasing curl ca-certificates sudo
+              else
+                echo "::error::no supported package manager (apt-get/dnf) found" >&2
+                exit 1
+              fi
 
               url="https://github.com/tenstorrent/tt-installer/releases/download/${INSTALLER_VERSION}/install.sh"
               curl -fL --retry 3 --retry-delay 5 -o /tmp/install.sh "$url"
