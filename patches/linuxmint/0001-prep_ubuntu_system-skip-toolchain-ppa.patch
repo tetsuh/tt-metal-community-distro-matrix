@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: ttossj1 <ttossj1@example.com>
-Date: Mon, 4 May 2026 10:31:03 +0900
+Date: Mon, 4 May 2026 10:37:46 +0900
 Subject: [PATCH] prep_ubuntu_system: skip ubuntu-toolchain-r PPA when g++-14
  already available
 
@@ -25,12 +25,12 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
  1 file changed, 14 insertions(+), 3 deletions(-)
 
 diff --git a/install_dependencies.sh b/install_dependencies.sh
-index 460efc5..1a807c8 100755
+index fd656bd..43ffb79 100755
 --- a/install_dependencies.sh
 +++ b/install_dependencies.sh
-@@ -309,11 +309,22 @@ prep_ubuntu_system() {
-         apt-get install -y --no-install-recommends kitware-archive-keyring
-     fi
+@@ -291,11 +291,22 @@ prep_ubuntu_system() {
+     # Install the kitware-archive-keyring package to ensure that your keyring stays up to date as keys are rotated
+     apt-get install -y --no-install-recommends kitware-archive-keyring
  
 -    # Add GCC toolchain repository for specific g++ versions if needed
 +    # Add GCC toolchain repository for specific g++ versions if needed.
