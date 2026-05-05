@@ -123,11 +123,14 @@ PY
 
   echo "::group::Apply ${patch_count} patch(es) from ${patch_dir}"
   # Apply patches sequentially in lexicographic order onto the staged
-  # install.m4. Each patch's diff path is "a/install.m4" -> "b/install.m4"
-  # so -p1 strips the a/b/ prefix and targets the file in -d.
+  # install.m4. The patches are git format-patch output, so we use
+  # ``git apply`` (which understands the ``index 0000000..0000001``
+  # header) rather than GNU ``patch`` (which mis-reads that as a
+  # /dev/null source and treats the diff as a file-creation patch).
   while IFS= read -r p; do
     echo "Applying $(basename "${p}")"
-    patch -p1 -d "${stage}" -i "$(realpath "${p}")" --forward --silent || {
+    abs_patch=$(realpath "${p}")
+    ( cd "${stage}" && git apply --whitespace=nowarn -p1 "${abs_patch}" ) || {
       echo "::error::failed to apply ${p}"
       exit 1
     }
