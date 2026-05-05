@@ -16,6 +16,14 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=en_US.UTF-8 \
     LANGUAGE=en_US:en
 
+#
+# clang-20 is pre-installed here so that tt-metal's
+# `install_dependencies.sh::install_llvm` short-circuits its
+# `apt.llvm.org/llvm.sh 20` invocation (which would otherwise fail
+# because apt.llvm.org has not published a `resolute` pocket yet).
+# Ubuntu 26.04 main/universe already provides clang-17, clang-20,
+# llvm-20-dev (1:20.1.8-2ubuntu8) and cmake (4.2.3-2ubuntu2), so
+# distro packages are fully sufficient.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
         ca-certificates \
@@ -28,6 +36,7 @@ RUN apt-get update \
         sudo \
         locales \
         lsb-release \
+        clang-20 \
  && sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen \
  && locale-gen en_US.UTF-8 \
  && rm -rf /var/lib/apt/lists/*
