@@ -15,6 +15,7 @@ on:
           - linuxmint-22.2
           - linuxmint-22.1
           - linuxmint-21.3
+          - ubuntu-26.04
           - rocky-10
           - rocky-9
           - debian-13
@@ -66,7 +67,7 @@ jobs:
         run: |
           set -eu
           if [ -z "${TARGET_OS}" ] || [ "${TARGET_OS}" = "all" ]; then
-            matrix='{"target_os":["linuxmint-21.3","linuxmint-22.1","linuxmint-22.2","linuxmint-22.3","rocky-9","rocky-10","debian-12","debian-13"]}'
+            matrix='{"target_os":["linuxmint-21.3","linuxmint-22.1","linuxmint-22.2","linuxmint-22.3","ubuntu-26.04","rocky-9","rocky-10","debian-12","debian-13"]}'
           else
             matrix=$(printf '{"target_os":["%s"]}' "${TARGET_OS}")
           fi
@@ -286,7 +287,7 @@ jobs:
         # for OSes with patches under patches/<distro>/installer/,
         # regenerates install.sh from install.m4 with those patches
         # applied via argbash.
-        if: matrix.target_os == 'debian-12' || matrix.target_os == 'debian-13' || matrix.target_os == 'rocky-9' || matrix.target_os == 'rocky-10' || matrix.target_os == 'linuxmint-21.3' || matrix.target_os == 'linuxmint-22.1' || matrix.target_os == 'linuxmint-22.2' || matrix.target_os == 'linuxmint-22.3'
+        if: matrix.target_os == 'debian-12' || matrix.target_os == 'debian-13' || matrix.target_os == 'rocky-9' || matrix.target_os == 'rocky-10' || matrix.target_os == 'linuxmint-21.3' || matrix.target_os == 'linuxmint-22.1' || matrix.target_os == 'linuxmint-22.2' || matrix.target_os == 'linuxmint-22.3' || matrix.target_os == 'ubuntu-26.04'
         env:
           INSTALLER_VERSION:    ${{ env.TT_INSTALLER_VERSION }}
           INSTALLER_SHA256:     ${{ env.TT_INSTALLER_SHA256 }}
@@ -465,7 +466,7 @@ jobs:
           set -eu
           python3 scripts/update_compat_table.py \
             --artifacts-dir _artifacts \
-            --require-os linuxmint-21.3 linuxmint-22.1 linuxmint-22.2 linuxmint-22.3 rocky-9 rocky-10 debian-12 debian-13
+            --require-os linuxmint-21.3 linuxmint-22.1 linuxmint-22.2 linuxmint-22.3 ubuntu-26.04 rocky-9 rocky-10 debian-12 debian-13
 
       - name: Show diff
         run: |
