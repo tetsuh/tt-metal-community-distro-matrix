@@ -314,7 +314,7 @@ jobs:
           scripts/install-phase-leg.sh \
             vanilla \
             "${IMAGE_TAG}" \
-            /tmp/install-vanilla.sh \
+            "${{ steps.install-prep.outputs.install_sh_vanilla }}" \
             logs/install-vanilla.log \
             "${INSTALLER_VERSION}"
 
@@ -334,7 +334,7 @@ jobs:
           scripts/install-phase-leg.sh \
             patched \
             "${IMAGE_TAG}" \
-            /tmp/install-patched.sh \
+            "${{ steps.install-prep.outputs.install_sh_patched }}" \
             logs/install-patched.log \
             "${INSTALLER_VERSION}"
 

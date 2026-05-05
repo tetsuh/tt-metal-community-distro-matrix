@@ -212,7 +212,7 @@ def render_install(by_os: dict[str, dict]) -> str:
             patched_emoji = STATUS_EMOJI.get(patched_status, "⏳")
             patches_dir = (
                 data.get("install_patch_dir")
-                or f"patches/{(data.get('distro') or '').lower()}/installer"
+                or f"patches/{(data.get('distro') or os_id.split('-')[0]).lower()}/installer"
             )
             noun = "patch" if install_patch_count == 1 else "patches"
             patched_cell = (

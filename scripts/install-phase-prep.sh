@@ -25,6 +25,7 @@ installer_m4_sha256="${4:?installer_m4_sha256 required}"
 patches_root="${5:-patches}"
 
 stage="${RUNNER_TEMP:-/tmp}/install-phase-prep"
+out_dir="${RUNNER_TEMP:-/tmp}"
 rm -rf "${stage}"
 mkdir -p "${stage}"
 
@@ -40,8 +41,8 @@ if [ "${got}" != "${installer_sha256}" ]; then
   exit 1
 fi
 echo "install.sh sha256 OK (${got})"
-cp "${stage}/install.sh" /tmp/install-vanilla.sh
-chmod +x /tmp/install-vanilla.sh
+cp "${stage}/install.sh" "${out_dir}/install-vanilla.sh"
+chmod +x "${out_dir}/install-vanilla.sh"
 echo "::endgroup::"
 
 patch_dir="${patches_root}/${distro}/installer"
@@ -139,9 +140,9 @@ PY
   echo "::endgroup::"
 
   echo "::group::Regenerate install-patched.sh"
-  "${argbash_bin}" "${stage}/install.m4.patched" -o /tmp/install-patched.sh
-  chmod +x /tmp/install-patched.sh
-  echo "patched install.sh size: $(wc -c </tmp/install-patched.sh) bytes"
+  "${argbash_bin}" "${stage}/install.m4.patched" -o "${out_dir}/install-patched.sh"
+  chmod +x "${out_dir}/install-patched.sh"
+  echo "patched install.sh size: $(wc -c <"${out_dir}/install-patched.sh") bytes"
   echo "::endgroup::"
 fi
 
@@ -150,6 +151,8 @@ if [ -n "${GITHUB_OUTPUT:-}" ]; then
     echo "install_patch_count=${patch_count}"
     echo "argbash_version=${argbash_version}"
     echo "patch_dir=${patch_dir}"
+    echo "install_sh_vanilla=${out_dir}/install-vanilla.sh"
+    echo "install_sh_patched=${out_dir}/install-patched.sh"
   } >> "${GITHUB_OUTPUT}"
 fi
 
