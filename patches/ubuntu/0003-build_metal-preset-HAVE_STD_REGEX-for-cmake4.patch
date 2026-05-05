@@ -1,42 +1,42 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Tetsuya Hayashi <tetsu.h@gmail.com>
 Date: Mon, 5 May 2026 00:00:00 +0900
-Subject: [PATCH] build_metal: preset HAVE_STD_REGEX to bypass cmake 4.x
- try_run issue in benchmark
+Subject: [PATCH] build_metal: preset cmake flags to bypass cmake 4.x
+ try_compile/try_run failures on Ubuntu 26.04
 
-On Ubuntu 26.04 with cmake 4.2, benchmark v1.9.1's CXXFeatureCheck.cmake
-silently fails to run its regex backend probes (try_run returns
-FAILED_TO_RUN for all three backends: STD_REGEX, GNU_POSIX_REGEX,
-POSIX_REGEX), causing a FATAL_ERROR during cmake configure:
+On Ubuntu 26.04 with cmake 4.2 + clang-20, two cmake subproject checks
+fail during configure, both due to cmake 4.x try_compile/try_run changes:
 
-  CMake Error: Failed to determine the source files for the regular
-  expression backend
+1. benchmark v1.9.1 (HAVE_STD_REGEX):
+   CXXFeatureCheck.cmake's try_run returns FAILED_TO_RUN for all three
+   regex backends (STD_REGEX, GNU_POSIX_REGEX, POSIX_REGEX), causing:
+     CMake Error: Failed to determine the source files for the regular
+     expression backend
+   Pre-setting HAVE_STD_REGEX=1 triggers benchmark's early-exit path in
+   cxx_feature_check() to skip try_run entirely.
 
-benchmark's cxx_feature_check() contains an early-exit path:
+2. capnproto (HAS_CXX14):
+   check_include_file_cxx(initializer_list HAS_CXX14 "-std=gnu++1y")
+   fails even with g++-15 and libstdc++-15-dev installed, causing:
+     CMake Error: Requires a C++14 compiler and standard library.
+   Pre-setting HAS_CXX14=1 causes cmake's CHECK_INCLUDE_FILE_CXX macro
+   to skip the try_compile check (it guards with "if(NOT DEFINED VAR)").
 
-  if (DEFINED HAVE_${VAR})
-    set(HAVE_${VAR} 1 PARENT_SCOPE)
-    add_definitions(-DHAVE_${VAR})
-    return()
-  endif()
+Both variables represent features that are unconditionally available in
+a proper clang-20 + libstdc++-15 environment on Ubuntu 26.04.
 
-Pre-setting -DHAVE_STD_REGEX=1 on the cmake command line triggers this
-early exit, selecting std::regex as the backend without running try_run.
-std::regex is fully available in libstdc++-15 on Ubuntu 26.04.
-
-Upstream-Status: Pending [cmake 4.x / benchmark try_run interaction,
-  likely related to policy CMP0028 / CMP0067 or similar try_run changes
-  in cmake 4.x affecting subproject builds]
+Upstream-Status: Pending [cmake 4.x subproject try_compile/try_run
+  behavior change, possibly CMP0067 or related policies]
 
 ---
- build_metal.sh | 6 ++++++
- 1 file changed, 6 insertions(+)
+ build_metal.sh | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
 diff --git a/build_metal.sh b/build_metal.sh
 index ede4b98..0000000 100755
 --- a/build_metal.sh
 +++ b/build_metal.sh
-@@ -419,6 +419,12 @@ if [ "$cxx_compiler_path" == "" ]; then
+@@ -419,6 +419,15 @@ if [ "$cxx_compiler_path" == "" ]; then
      cmake_args+=("-DCMAKE_TOOLCHAIN_FILE=${toolchain_path}")
  fi
  
@@ -45,6 +45,9 @@ index ede4b98..0000000 100755
 +# probe returns FAILED_TO_RUN for all three backends and causes a
 +# FATAL_ERROR.  std::regex is always available in a full libstdc++ install.
 +cmake_args+=("-DHAVE_STD_REGEX=1")
++# Preset HAS_CXX14 to bypass capnproto's check_include_file_cxx
++# (initializer_list) which fails on cmake 4.x + clang-20 + Ubuntu 26.04.
++cmake_args+=("-DHAS_CXX14=1")
 +
  echo "INFO: Configuring Project"
  echo "INFO: Running: cmake "${cmake_args[@]}""
