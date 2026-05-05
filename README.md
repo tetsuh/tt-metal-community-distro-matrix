@@ -62,8 +62,10 @@ The build pipeline above only exercises the deps/build path of `tt-metal` itself
 
 **Install-phase columns** (separate table)
 
-- **tt-installer** — exit status of the official installer (pinned release) when run with all hardware-dependent components disabled. The cell shows the pinned installer version when available.
-- **Repo configured** — whether the installer registered the `ppa.tenstorrent.com` package repository in `/etc/apt/sources.list*` or `/etc/yum.repos.d/`, verified by content-grep inside the post-install container.
+- **Vanilla** — exit status of the official installer's released `install.sh` on the target distro, with all hardware-dependent components disabled. This is what an upstream user gets running the public one-liner.
+- **With patches** — exit status of `install.sh` regenerated from `install.m4` with the patches in [`patches/<distro>/installer/`](patches/) applied. The cell links to the patch directory and shows how many installer patches are applied. A `(no patches)` annotation means no installer-level patches are needed for this distro and the two columns are by definition identical.
+- The pinned installer version is shown next to the **Vanilla** cell.
+- Linux Mint **Vanilla** is expected to fail (❌) because the upstream installer derives the apt repo URL from `VERSION_CODENAME`, which on Mint is the Mint-specific codename (e.g. `wilma`, `xia`, `zara`) rather than the upstream Ubuntu codename. The patch in [`patches/linuxmint/installer/`](patches/linuxmint/installer/) prefers `UBUNTU_CODENAME` and recovers the install (✅).
 
 Patches in this repository are kept as standalone `git format-patch` files so they can be reviewed individually and contributed back upstream. See [patches/README.md](patches/README.md) for the policy and per-patch upstream status.
 

@@ -33,11 +33,18 @@ permissions:
   contents: read
 
 # Pinned tt-installer release used by the install-phase verification.
-# Bump this manually after reviewing the upstream release notes; we
+# Bump these manually after reviewing the upstream release notes; we
 # pin so that compatibility regressions can only be introduced by
 # changes in this repo, in tt-metal, or in the target distro images.
 env:
   TT_INSTALLER_VERSION: v2.2.1
+  # sha256 of the released install.sh tarball asset for v2.2.1 -- pinned
+  # so the install-phase cannot silently shift if upstream re-tags.
+  TT_INSTALLER_SHA256: 2fe18ca0197f0f8ebcfb93a550dbb80a441a72697e97a6f4cf55c7f5dddeb036
+  # sha256 of install.m4 at refs/tags/v2.2.1 -- the source the patches
+  # in patches/<distro>/installer/ are written against. If this hash
+  # changes the patches need re-validating.
+  TT_INSTALLER_M4_SHA256: 069f03b139c9870d2ab99a14d5975bea8f9136ce83382e2b76597347f0d8e190
 
 # Only one full-matrix run at a time.  Older runs are cancelled so the
 # README auto-update never sees a stale matrix overwriting a newer one.
@@ -272,133 +279,64 @@ jobs:
           ls -la tt-metal/ || true
           exit 1
 
-      - name: Run tt-installer (install phase)
-        id: install
-        # Install-phase verification is opt-in per OS. Currently enabled
-        # for Debian 12/13 (officially supported by tt-installer) and
-        # Rocky 9/10 (handled via tt-installer's rhel/centos fallback,
-        # which writes the Fedora yum repo). Linux Mint requires a
-        # codename workaround and is tracked separately.
-        if: matrix.target_os == 'debian-12' || matrix.target_os == 'debian-13' || matrix.target_os == 'rocky-9' || matrix.target_os == 'rocky-10'
+      - name: Prepare install.sh variants
+        id: install-prep
+        # Run install-phase verification on every wired-up OS. The prep
+        # step downloads the released install.sh (pinned by sha256) and,
+        # for OSes with patches under patches/<distro>/installer/,
+        # regenerates install.sh from install.m4 with those patches
+        # applied via argbash.
+        if: matrix.target_os == 'debian-12' || matrix.target_os == 'debian-13' || matrix.target_os == 'rocky-9' || matrix.target_os == 'rocky-10' || matrix.target_os == 'linuxmint-21.3' || matrix.target_os == 'linuxmint-22.1' || matrix.target_os == 'linuxmint-22.2' || matrix.target_os == 'linuxmint-22.3'
+        env:
+          INSTALLER_VERSION:    ${{ env.TT_INSTALLER_VERSION }}
+          INSTALLER_SHA256:     ${{ env.TT_INSTALLER_SHA256 }}
+          INSTALLER_M4_SHA256:  ${{ env.TT_INSTALLER_M4_SHA256 }}
+          DISTRO:               ${{ steps.os.outputs.distro }}
+        run: |
+          chmod +x scripts/install-phase-prep.sh
+          scripts/install-phase-prep.sh \
+            "${DISTRO}" \
+            "${INSTALLER_VERSION}" \
+            "${INSTALLER_SHA256}" \
+            "${INSTALLER_M4_SHA256}" \
+            patches
+
+      - name: Run tt-installer (vanilla)
+        id: install-vanilla
+        if: steps.install-prep.outcome == 'success'
         continue-on-error: true
         env:
-          IMAGE_TAG: ${{ steps.os.outputs.image_tag }}
+          IMAGE_TAG:         ${{ steps.os.outputs.image_tag }}
           INSTALLER_VERSION: ${{ env.TT_INSTALLER_VERSION }}
         run: |
-          set -o pipefail
+          chmod +x scripts/install-phase-leg.sh
           mkdir -p logs
-
-          echo "::group::tt-installer ${INSTALLER_VERSION} (fresh container)"
-          # Run the installer in a *fresh* container of the same base
-          # image so that any side-effects of tt-metal's
-          # install_dependencies.sh do not influence the result. The
-          # post-condition (Tenstorrent apt source registered) is
-          # checked inside the same `docker run` since `--rm` removes
-          # the container on exit.
-          set +e
-          docker run --rm \
-            -e INSTALLER_VERSION="${INSTALLER_VERSION}" \
+          scripts/install-phase-leg.sh \
+            vanilla \
             "${IMAGE_TAG}" \
-            bash -lc '
-              set -u
-              cat /etc/os-release
-              # Bring the base image up to a state where tt-installer
-              # can operate (curl/sudo/ca-certificates). Detect the
-              # package manager rather than branching on the matrix
-              # target so each base image is treated by its own family.
-              if command -v apt-get >/dev/null 2>&1; then
-                apt-get update
-                DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-                  curl ca-certificates sudo
-              elif command -v dnf >/dev/null 2>&1; then
-                # --allowerasing handles curl-minimal vs curl conflicts
-                # on Rocky 10-style minimal images.
-                dnf install -y --allowerasing curl ca-certificates sudo
-              else
-                echo "::error::no supported package manager (apt-get/dnf) found" >&2
-                exit 1
-              fi
+            "${{ steps.install-prep.outputs.install_sh_vanilla }}" \
+            logs/install-vanilla.log \
+            "${INSTALLER_VERSION}"
 
-              url="https://github.com/tenstorrent/tt-installer/releases/download/${INSTALLER_VERSION}/install.sh"
-              curl -fL --retry 3 --retry-delay 5 -o /tmp/install.sh "$url"
-              chmod +x /tmp/install.sh
-
-              set +e
-              # Skip everything that needs hardware, kernel headers or
-              # external image pulls. We only want to validate that the
-              # installer runs to completion and registers the
-              # Tenstorrent package repository on this distro.
-              /tmp/install.sh \
-                --mode-non-interactive \
-                --no-install-kmd \
-                --no-install-hugepages \
-                --install-container-runtime=no \
-                --no-install-tt-flash \
-                --no-install-tt-smi \
-                --no-install-tt-topology \
-                --no-install-sfpi \
-                --no-install-inference-server \
-                --no-install-studio \
-                --no-install-metalium-container \
-                --no-install-forge-container \
-                --update-firmware=off \
-                --reboot-option=never
-              installer_rc=$?
-              set -e
-
-              # Post-condition: the installer must register the
-              # Tenstorrent package source. Search by content (not
-              # filename) across all the locations apt looks at, and
-              # also under /etc/yum.repos.d for the future RPM
-              # rollout.
-              # NOTE: `grep -R` exits with status 2 when any of the
-              # listed paths is missing -- on Debian /etc/apt/sources.list
-              # is absent and /etc/yum.repos.d does not exist -- so do
-              # not branch on its exit code. Capture matches into a
-              # file and inspect that.
-              : > /tmp/repo-hits
-              find /etc/apt/sources.list \
-                   /etc/apt/sources.list.d \
-                   /etc/yum.repos.d \
-                   -type f 2>/dev/null \
-                | xargs -r grep -li "tenstorrent" 2>/dev/null \
-                > /tmp/repo-hits || true
-              if [ -s /tmp/repo-hits ]; then
-                repo_files=$(tr "\n" "," < /tmp/repo-hits | sed "s/,$//")
-                repo_present=true
-              else
-                repo_files=""
-                repo_present=false
-              fi
-
-              echo "INSTALLER_RC=${installer_rc}"
-              echo "REPO_PRESENT=${repo_present}"
-              echo "REPO_FILES=${repo_files}"
-              exit "${installer_rc}"
-            ' 2>&1 | tee logs/install-tt-installer.log
-          installer_overall_rc=${PIPESTATUS[0]}
-          set -e
-          echo "::endgroup::"
-
-          # Parse the structured markers from the captured log so that
-          # the workflow step output reflects the in-container state
-          # even if `--rm` later wiped the container.
-          repo_present=$(grep -E '^REPO_PRESENT=' logs/install-tt-installer.log \
-                         | tail -n1 | cut -d= -f2)
-          repo_files=$(grep -E '^REPO_FILES='   logs/install-tt-installer.log \
-                       | tail -n1 | cut -d= -f2-)
-          repo_present=${repo_present:-false}
-          if [ "$installer_overall_rc" -eq 0 ] && [ "$repo_present" = "true" ]; then
-            install_status=success
-          else
-            install_status=failure
-          fi
-          echo "install_status=$install_status"           >> "$GITHUB_OUTPUT"
-          echo "install_repo_present=$repo_present"       >> "$GITHUB_OUTPUT"
-          echo "install_repo_files=$repo_files"           >> "$GITHUB_OUTPUT"
-          echo "install_installer_rc=$installer_overall_rc" >> "$GITHUB_OUTPUT"
-          echo "installer_version=${INSTALLER_VERSION}"   >> "$GITHUB_OUTPUT"
-          echo "tt-installer ${INSTALLER_VERSION}: $install_status (rc=$installer_overall_rc, repo_present=$repo_present)"
+      - name: Run tt-installer (patched)
+        id: install-patched
+        # Only OSes with installer patches need this leg. For the rest,
+        # the renderer synthesises the "with patches" cell from the
+        # vanilla result and tags it as "(no patches)".
+        if: steps.install-prep.outcome == 'success' && steps.install-prep.outputs.install_patch_count != '0'
+        continue-on-error: true
+        env:
+          IMAGE_TAG:         ${{ steps.os.outputs.image_tag }}
+          INSTALLER_VERSION: ${{ env.TT_INSTALLER_VERSION }}
+        run: |
+          chmod +x scripts/install-phase-leg.sh
+          mkdir -p logs
+          scripts/install-phase-leg.sh \
+            patched \
+            "${IMAGE_TAG}" \
+            "${{ steps.install-prep.outputs.install_sh_patched }}" \
+            logs/install-patched.log \
+            "${INSTALLER_VERSION}"
 
       - name: Write status JSON
         if: always()
@@ -408,34 +346,56 @@ jobs:
           status="${{ job.status }}"
           vanilla="${{ steps.build.outputs.vanilla_status }}"
           patch_count="${{ steps.build.outputs.patch_count }}"
-          install_status="${{ steps.install.outputs.install_status }}"
-          install_repo_present="${{ steps.install.outputs.install_repo_present }}"
-          install_repo_files="${{ steps.install.outputs.install_repo_files }}"
-          install_rc="${{ steps.install.outputs.install_installer_rc }}"
-          installer_version="${{ steps.install.outputs.installer_version }}"
+          # New per-leg install fields.
+          install_status_vanilla="${{ steps.install-vanilla.outputs.install_status_vanilla }}"
+          install_repo_present_vanilla="${{ steps.install-vanilla.outputs.install_repo_present_vanilla }}"
+          install_repo_files_vanilla="${{ steps.install-vanilla.outputs.install_repo_files_vanilla }}"
+          install_rc_vanilla="${{ steps.install-vanilla.outputs.install_installer_rc_vanilla }}"
+          install_status_patched="${{ steps.install-patched.outputs.install_status_patched }}"
+          install_repo_present_patched="${{ steps.install-patched.outputs.install_repo_present_patched }}"
+          install_repo_files_patched="${{ steps.install-patched.outputs.install_repo_files_patched }}"
+          install_rc_patched="${{ steps.install-patched.outputs.install_installer_rc_patched }}"
+          install_patch_count="${{ steps.install-prep.outputs.install_patch_count }}"
+          install_patch_dir="${{ steps.install-prep.outputs.patch_dir }}"
+          argbash_version="${{ steps.install-prep.outputs.argbash_version }}"
+          installer_version="${{ env.TT_INSTALLER_VERSION }}"
+
           # Defaults if the build step did not run far enough to set
           # outputs (e.g. checkout failed).
           vanilla="${vanilla:-na}"
           patch_count="${patch_count:-0}"
-          # When the install step is skipped (most OSes today) we
-          # emit "na" rather than "skipped" so that the table renders
-          # an explicit n/a marker rather than a "scheduled" hourglass.
-          install_status="${install_status:-na}"
-          # JSON booleans/null for repo_present so old artifacts
-          # remain easy to filter.
-          if [ -z "${install_repo_present}" ]; then
-            install_repo_present_json=null
-          elif [ "${install_repo_present}" = "true" ]; then
-            install_repo_present_json=true
-          else
-            install_repo_present_json=false
-          fi
-          install_rc="${install_rc:-}"
-          if [ -z "${install_rc}" ]; then
-            install_rc_json=null
-          else
-            install_rc_json=${install_rc}
-          fi
+          install_status_vanilla="${install_status_vanilla:-na}"
+          install_status_patched="${install_status_patched:-na}"
+          install_patch_count="${install_patch_count:-0}"
+
+          json_bool_or_null() {
+            case "$1" in
+              true)  printf 'true' ;;
+              false) printf 'false' ;;
+              *)     printf 'null' ;;
+            esac
+          }
+          json_int_or_null() {
+            if [ -z "$1" ]; then
+              printf 'null'
+            else
+              printf '%s' "$1"
+            fi
+          }
+
+          irp_v_json=$(json_bool_or_null "${install_repo_present_vanilla}")
+          irp_p_json=$(json_bool_or_null "${install_repo_present_patched}")
+          rc_v_json=$(json_int_or_null "${install_rc_vanilla}")
+          rc_p_json=$(json_int_or_null "${install_rc_patched}")
+
+          # Backward-compat aliases (one cycle): mirror the vanilla
+          # leg into the legacy install_* keys so existing artifacts
+          # mixing old + new schema continue to render.
+          legacy_install_status="${install_status_vanilla}"
+          legacy_install_repo_present_json="${irp_v_json}"
+          legacy_install_repo_files="${install_repo_files_vanilla}"
+          legacy_install_rc_json="${rc_v_json}"
+
           cat > logs/status.json <<EOF
           {
             "target_os": "${{ matrix.target_os }}",
@@ -449,11 +409,22 @@ jobs:
             "status":   "${status}",
             "vanilla_status": "${vanilla}",
             "patch_count":    ${patch_count},
-            "install_status": "${install_status}",
-            "install_repo_present": ${install_repo_present_json},
-            "install_repo_files":   "${install_repo_files}",
-            "install_installer_rc": ${install_rc_json},
-            "installer_version":    "${installer_version}",
+            "install_status_vanilla":       "${install_status_vanilla}",
+            "install_repo_present_vanilla": ${irp_v_json},
+            "install_repo_files_vanilla":   "${install_repo_files_vanilla}",
+            "install_installer_rc_vanilla": ${rc_v_json},
+            "install_status_patched":       "${install_status_patched}",
+            "install_repo_present_patched": ${irp_p_json},
+            "install_repo_files_patched":   "${install_repo_files_patched}",
+            "install_installer_rc_patched": ${rc_p_json},
+            "install_patch_count":          ${install_patch_count},
+            "install_patch_dir":            "${install_patch_dir}",
+            "argbash_version":              "${argbash_version}",
+            "installer_version":            "${installer_version}",
+            "install_status":        "${legacy_install_status}",
+            "install_repo_present":  ${legacy_install_repo_present_json},
+            "install_repo_files":    "${legacy_install_repo_files}",
+            "install_installer_rc":  ${legacy_install_rc_json},
             "artifact_dir": "${{ steps.artifacts.outputs.found_dir }}"
           }
           EOF
