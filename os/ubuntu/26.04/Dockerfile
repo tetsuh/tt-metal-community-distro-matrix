@@ -42,6 +42,7 @@ RUN apt-get update \
         locales \
         lsb-release \
         clang-20 \
+        g++-15 \
         libstdc++-15-dev \
  && ln -sf /usr/lib/gcc/x86_64-linux-gnu/15/libstdc++.so \
            /usr/lib/x86_64-linux-gnu/libstdc++.so \
