@@ -14,9 +14,7 @@ FROM ubuntu:26.04
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8 \
-    LANGUAGE=en_US:en \
-    CXXFLAGS="--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/15" \
-    CFLAGS="--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/15"
+    LANGUAGE=en_US:en
 
 #
 # clang-20 is pre-installed here so that tt-metal's
@@ -51,5 +49,17 @@ RUN apt-get update \
  && sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen \
  && locale-gen en_US.UTF-8 \
  && rm -rf /var/lib/apt/lists/*
+
+# clang-20 on Ubuntu 26.04 does not auto-detect the gcc-15 installation
+# (GCCInstallationDetector bug or packaging change).  Wrapper scripts in
+# /usr/local/bin/ (which precedes /usr/bin/ in PATH) inject the required
+# --gcc-install-dir flag for *every* clang invocation — including Tracy's
+# ExternalProject Makefile, which overrides CFLAGS/CXXFLAGS with := and
+# therefore cannot be reached via ENV CXXFLAGS.
+RUN printf '#!/bin/sh\nexec /usr/bin/clang-20 --gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/15 "$@"\n' \
+        > /usr/local/bin/clang-20 \
+ && printf '#!/bin/sh\nexec /usr/bin/clang++-20 --gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/15 "$@"\n' \
+        > /usr/local/bin/clang++-20 \
+ && chmod +x /usr/local/bin/clang-20 /usr/local/bin/clang++-20
 
 CMD ["bash"]
