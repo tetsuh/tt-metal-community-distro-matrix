@@ -42,7 +42,7 @@ RUN apt-get update \
         locales \
         lsb-release \
         clang-20 \
-        libstdc++-dev \
+        libstdc++-15-dev \
  && sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen \
  && locale-gen en_US.UTF-8 \
  && rm -rf /var/lib/apt/lists/*
