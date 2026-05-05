@@ -26,18 +26,28 @@ exercises the noble base.
 
 ## Workarounds for gaps in `install.sh` / `install_dependencies.sh`
 
-Patches live under [`patches/ubuntu/installer/`](../../patches/ubuntu/installer)
-(installer-side) and are applied automatically by the workflow's
-install-phase prep step.  Each patch is written so it can be sent
-upstream as-is — see [`patches/README.md`](../../patches/README.md) for
-the policy.
+Patches live in two places, mirroring the two phases of the workflow:
+
+* [`patches/ubuntu/`](../../patches/ubuntu) — patches applied by the
+  build-phase step to the **tt-metal** source tree (in particular
+  `install_dependencies.sh`) before `build_metal.sh` is invoked.
+* [`patches/ubuntu/installer/`](../../patches/ubuntu/installer) —
+  patches applied by the install-phase prep step to the
+  **tt-installer** source (`install.sh` / `install.m4`).
+
+Each patch is written so it can be sent upstream as-is — see
+[`patches/README.md`](../../patches/README.md) for the policy.
 
 | # | Path | Title | Why it is needed |
 |---|---|---|---|
+| `0001` | `./` | `prep_ubuntu_system: use gpg --dearmor instead of apt-key` | `apt-key` was removed entirely from Ubuntu 26.04 (resolute), so `install_dependencies.sh` line 275 fails with `apt-key: command not found` (exit 127) before the build can even start. Replace the legacy `apt-key add -` invocation with a `gpg --dearmor` write into `/etc/apt/trusted.gpg.d/`, which works identically on Ubuntu 22.04+ and Debian 12/13. **Upstream tracking:** [tenstorrent/tt-metal#38833](https://github.com/tenstorrent/tt-metal/pull/38833) (open) addresses the same issue for Debian 12; once that PR lands the codepath will already be modern on `main`. Distro-Scope: `ubuntu, debian-12, debian-13`. |
 | `0001` | `installer/` | `installer: map Ubuntu 26.04 (resolute) to noble for the Tenstorrent PPA` | `ppa.tenstorrent.com` does not yet publish a `resolute` pocket; the 24.04 (`noble`) packages are ABI-compatible enough for the installer's purposes (driver / firmware tooling), so we override the codename used for the apt sources entry. The patch is intended to be temporary and should be dropped once Tenstorrent ships a 26.04 pocket.  Distro-Scope: `ubuntu-26.04`. |
 
 ## Future improvements
 
+* Drop the apt-key patch once
+  [tenstorrent/tt-metal#38833](https://github.com/tenstorrent/tt-metal/pull/38833)
+  (or an equivalent fix) lands on `main`.
 * Drop the codename mapping patch as soon as `ppa.tenstorrent.com`
   exposes a 26.04 pocket.
 * Add `ubuntu-24.04` only if a regression appears that is not visible on
