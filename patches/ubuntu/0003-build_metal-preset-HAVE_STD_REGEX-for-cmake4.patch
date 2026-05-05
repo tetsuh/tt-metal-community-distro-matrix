@@ -4,8 +4,8 @@ Date: Mon, 5 May 2026 00:00:00 +0900
 Subject: [PATCH] build_metal: preset cmake flags to bypass cmake 4.x
  try_compile/try_run failures on Ubuntu 26.04
 
-On Ubuntu 26.04 with cmake 4.2 + clang-20, two cmake subproject checks
-fail during configure, both due to cmake 4.x try_compile/try_run changes:
+On Ubuntu 26.04 with cmake 4.2 + clang-20, several cmake configure
+failures occur.  This patch addresses three issues:
 
 1. benchmark v1.9.1 (HAVE_STD_REGEX):
    CXXFeatureCheck.cmake's try_run returns FAILED_TO_RUN for all three
@@ -22,21 +22,27 @@ fail during configure, both due to cmake 4.x try_compile/try_run changes:
    Pre-setting HAS_CXX14=1 causes cmake's CHECK_INCLUDE_FILE_CXX macro
    to skip the try_compile check (it guards with "if(NOT DEFINED VAR)").
 
-Both variables represent features that are unconditionally available in
-a proper clang-20 + libstdc++-15 environment on Ubuntu 26.04.
+3. flatbuffers (and potentially other subprojects): C++ headers not found
+   clang-20's automatic gcc installation detection fails to locate
+   g++-15's headers (/usr/include/c++/15/) on Ubuntu 26.04, causing:
+     fatal error: 'algorithm' file not found (and other C++ headers)
+   Explicitly providing --gcc-install-dir bypasses the auto-detection.
+
+All three represent features/headers that are unconditionally available
+in a proper clang-20 + g++-15 + libstdc++-15 environment on Ubuntu 26.04.
 
 Upstream-Status: Pending [cmake 4.x subproject try_compile/try_run
-  behavior change, possibly CMP0067 or related policies]
+  behavior change; clang-20 gcc detection on Ubuntu 26.04 with gcc-15]
 
 ---
- build_metal.sh | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ build_metal.sh | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
 diff --git a/build_metal.sh b/build_metal.sh
 index ede4b98..0000000 100755
 --- a/build_metal.sh
 +++ b/build_metal.sh
-@@ -419,6 +419,15 @@ if [ "$cxx_compiler_path" == "" ]; then
+@@ -419,6 +419,19 @@ if [ "$cxx_compiler_path" == "" ]; then
      cmake_args+=("-DCMAKE_TOOLCHAIN_FILE=${toolchain_path}")
  fi
  
@@ -48,6 +54,10 @@ index ede4b98..0000000 100755
 +# Preset HAS_CXX14 to bypass capnproto's check_include_file_cxx
 +# (initializer_list) which fails on cmake 4.x + clang-20 + Ubuntu 26.04.
 +cmake_args+=("-DHAS_CXX14=1")
++# clang-20 on Ubuntu 26.04 fails to auto-detect g++-15 headers; specify
++# the gcc installation directory explicitly so all C++ stdlib headers
++# (algorithm, string, cstring, etc.) are found during subproject builds.
++cmake_args+=("-DCMAKE_CXX_FLAGS=--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/15")
 +
  echo "INFO: Configuring Project"
  echo "INFO: Running: cmake "${cmake_args[@]}""
