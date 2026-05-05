@@ -29,14 +29,14 @@ Upstream-Status: Pending [cmake 4.x / benchmark try_run interaction,
   in cmake 4.x affecting subproject builds]
 
 ---
- build_metal.sh | 5 +++++
- 1 file changed, 5 insertions(+)
+ build_metal.sh | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
 diff --git a/build_metal.sh b/build_metal.sh
 index ede4b98..0000000 100755
 --- a/build_metal.sh
 +++ b/build_metal.sh
-@@ -420,6 +420,11 @@ if [ "$cxx_compiler_path" == "" ]; then
+@@ -419,6 +419,12 @@ if [ "$cxx_compiler_path" == "" ]; then
      cmake_args+=("-DCMAKE_TOOLCHAIN_FILE=${toolchain_path}")
  fi
  
