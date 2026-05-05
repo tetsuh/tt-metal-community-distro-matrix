@@ -24,6 +24,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Ubuntu 26.04 main/universe already provides clang-17, clang-20,
 # llvm-20-dev (1:20.1.8-2ubuntu8) and cmake (4.2.3-2ubuntu2), so
 # distro packages are fully sufficient.
+#
+# libstdc++-dev is also pre-installed: on Ubuntu 26.04 the g++ package
+# no longer pulls in libstdc++-dev as a dependency, so the libstdc++.so
+# symlink (needed by ld when linking with -lstdc++) would otherwise be
+# absent and cmake's CXX compiler test fails immediately.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
         ca-certificates \
@@ -37,6 +42,7 @@ RUN apt-get update \
         locales \
         lsb-release \
         clang-20 \
+        libstdc++-dev \
  && sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen \
  && locale-gen en_US.UTF-8 \
  && rm -rf /var/lib/apt/lists/*
