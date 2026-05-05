@@ -14,7 +14,9 @@ FROM ubuntu:26.04
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8 \
-    LANGUAGE=en_US:en
+    LANGUAGE=en_US:en \
+    CXXFLAGS="--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/15" \
+    CFLAGS="--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/15"
 
 #
 # clang-20 is pre-installed here so that tt-metal's
