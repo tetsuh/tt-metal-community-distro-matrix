@@ -51,6 +51,7 @@ The build pipeline above only exercises the deps/build path of `tt-metal` itself
 |---|---|
 | ✅ | Pipeline completed successfully on the latest run |
 | ❌ | Pipeline failed; see the linked log for details |
+| ❌(patch/deps/build/verify/install/workflow) | Pipeline failed in the named phase |
 | ⏳ | Scheduled but not yet executed |
 | — | Not applicable for this distribution / phase |
 
@@ -107,9 +108,7 @@ History (raw JSON) lives under [`history/`](./history) once Burst 2.6 introduces
 
 ## Planned distributions
 
-Additional distributions tracked but not yet onboarded into CI:
-
-- Ubuntu 26.04 _(awaiting upstream availability)_
+Additional distributions tracked but not yet onboarded into CI will be listed here.
 
 ## Adding a new distribution
 

@@ -49,6 +49,14 @@ STATUS_EMOJI = {
     "cancelled": "❌",
     "skipped": "⏳",
 }
+FAILURE_STAGE_LABELS = {
+    "patch": "patch",
+    "deps": "deps",
+    "build": "build",
+    "verify": "verify",
+    "install": "install",
+    "workflow": "workflow",
+}
 
 START_MARKER = "<!-- COMPAT_TABLE_START -->"
 END_MARKER = "<!-- COMPAT_TABLE_END -->"
@@ -92,6 +100,34 @@ def collect(artifacts_dir: Path) -> dict[str, dict]:
     return by_os
 
 
+def status_cell(status: str, stage: str = "") -> str:
+    """Return an emoji status cell, adding a short stage hint on failures."""
+    normalized = (status or "").lower()
+    emoji = STATUS_EMOJI.get(normalized, "⏳")
+    stage_label = FAILURE_STAGE_LABELS.get((stage or "").lower(), "")
+    if emoji == "❌" and stage_label:
+        return f"{emoji}({stage_label})"
+    return emoji
+
+
+def first_failed_stage(data: dict) -> str:
+    """Infer the first failed build pipeline stage from a status.json object."""
+    explicit = str(data.get("failure_stage") or "").lower()
+    if explicit and explicit != "na":
+        return explicit
+    for key, stage in (
+        ("patch_status_patched", "patch"),
+        ("deps_status_patched", "deps"),
+        ("build_status_patched", "build"),
+        ("artifact_status", "verify"),
+    ):
+        if str(data.get(key) or "").lower() == "failure":
+            return stage
+    if str(data.get("status") or "").lower() in {"failure", "cancelled"}:
+        return "workflow"
+    return ""
+
+
 def render(by_os: dict[str, dict]) -> str:
     sha = ""
     ref = ""
@@ -127,7 +163,7 @@ def render(by_os: dict[str, dict]) -> str:
         data = by_os.get(os_id)
         if data:
             patched_status = (data.get("status") or "").lower()
-            patched_emoji = STATUS_EMOJI.get(patched_status, "⏳")
+            patched_emoji = status_cell(patched_status, first_failed_stage(data))
             run_url = data.get("run_url", "")
             log_cell = f"[run]({run_url})" if run_url else "—"
 
@@ -149,7 +185,10 @@ def render(by_os: dict[str, dict]) -> str:
                 # pass that runs install_dependencies.sh without applying
                 # them; older artifacts may not have this field, in which
                 # case we leave the cell as ⏳ rather than guess.
-                vanilla_cell = STATUS_EMOJI.get(vanilla_status, "⏳")
+                vanilla_cell = status_cell(
+                    vanilla_status,
+                    str(data.get("vanilla_failure_stage") or ""),
+                )
                 patches_dir = f"patches/{(data.get('distro') or '').lower()}"
                 noun = "patch" if patch_count == 1 else "patches"
                 patched_cell = (
@@ -199,7 +238,7 @@ def render_install(by_os: dict[str, dict]) -> str:
             lines.append(f"| {name} | — | — | — |")
             continue
 
-        vanilla_emoji = STATUS_EMOJI.get(vanilla_status, "⏳")
+        vanilla_emoji = status_cell(vanilla_status, "install")
         installer_version = data.get("installer_version") or ""
         version_suffix = f" (`{installer_version}`)" if installer_version else ""
         vanilla_cell = f"{vanilla_emoji}{version_suffix}"
@@ -209,7 +248,7 @@ def render_install(by_os: dict[str, dict]) -> str:
             # column is by definition the vanilla result.
             patched_cell = f"{vanilla_emoji} (no patches)"
         else:
-            patched_emoji = STATUS_EMOJI.get(patched_status, "⏳")
+            patched_emoji = status_cell(patched_status, "install")
             patches_dir = (
                 data.get("install_patch_dir")
                 or f"patches/{(data.get('distro') or os_id.split('-')[0]).lower()}/installer"

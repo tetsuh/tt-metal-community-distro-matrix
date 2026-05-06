@@ -186,26 +186,34 @@ jobs:
               -e TT_METAL_HOME=/workspace/tt-metal \
               "${{ steps.os.outputs.image_tag }}" \
               bash -lc '
-                set -eux
+                set -ux
                 git config --global --add safe.directory "*"
                 cat /etc/os-release
                 ./install_dependencies.sh --docker
+                deps_rc=$?
+                echo "__TTMCDM_VANILLA_DEPS_RC=$deps_rc"
+                exit "$deps_rc"
               ' 2>&1 | tee logs/build-vanilla.log
             vanilla_rc=${PIPESTATUS[0]}
             set -e
             if [ "$vanilla_rc" -eq 0 ]; then
               vanilla_status="success"
+              vanilla_failure_stage="na"
             else
               vanilla_status="failure"
+              vanilla_failure_stage="deps"
             fi
             echo "Vanilla install_dependencies.sh: $vanilla_status (rc=$vanilla_rc)"
             echo "::endgroup::"
           else
             echo "No patches under $patch_dir; vanilla pass is identical to the patched pass."
+            vanilla_failure_stage="na"
           fi
           echo "vanilla_status=$vanilla_status" >> "$GITHUB_OUTPUT"
+          echo "vanilla_failure_stage=$vanilla_failure_stage" >> "$GITHUB_OUTPUT"
 
           echo "::group::Patched build"
+          set +e
           docker run --rm \
             -v "${PWD}/tt-metal:/workspace/tt-metal" \
             -v "${PWD}/patches:/patches:ro" \
@@ -213,13 +221,13 @@ jobs:
             -e TT_METAL_HOME=/workspace/tt-metal \
             "${{ steps.os.outputs.image_tag }}" \
             bash -lc '
-              set -eux
+              set -ux
               # Tell git that the bind-mounted source tree (owned by the host runner uid)
               # is safe to use as root inside the container. Without this, git refuses to
               # operate on the directory and tt-metal cannot determine its version, which
               # later causes write_basic_package_version_file() to fail with
               # "No VERSION specified".
-              git config --global --add safe.directory "*"
+              git config --global --add safe.directory "*" || exit $?
               cat /etc/os-release
               # Apply OS-specific patches to tt-metal that are required for the
               # build/install scripts to run on the target distro.  Patches are
@@ -228,6 +236,7 @@ jobs:
               # See patches/README.md for the policy and per-patch status.
               . /etc/os-release
               patch_dir="/patches/${ID:-unknown}"
+              patch_rc=0
               if [ -d "$patch_dir" ]; then
                 shopt -s nullglob
                 patches=("$patch_dir"/*.patch)
@@ -235,14 +244,68 @@ jobs:
                   echo "Applying ${#patches[@]} patch(es) from $patch_dir"
                   for p in "${patches[@]}"; do
                     echo "--- $p ---"
-                    git apply --verbose "$p"
+                    git apply --verbose "$p" || { patch_rc=$?; break; }
                   done
                 fi
               fi
+              echo "__TTMCDM_PATCH_RC=$patch_rc"
+              if [ "$patch_rc" -ne 0 ]; then
+                exit "$patch_rc"
+              fi
+              echo "__TTMCDM_STAGE=deps"
               ./install_dependencies.sh --docker
+              deps_rc=$?
+              echo "__TTMCDM_DEPS_RC=$deps_rc"
+              if [ "$deps_rc" -ne 0 ]; then
+                exit "$deps_rc"
+              fi
+              echo "__TTMCDM_STAGE=build"
               ./build_metal.sh
+              build_rc=$?
+              echo "__TTMCDM_BUILD_RC=$build_rc"
+              exit "$build_rc"
             ' 2>&1 | tee logs/build.log
+          patched_rc=${PIPESTATUS[0]}
+          set -e
+
+          rc_to_status() {
+            if [ -z "$1" ]; then
+              printf 'skipped'
+            elif [ "$1" -eq 0 ]; then
+              printf 'success'
+            else
+              printf 'failure'
+            fi
+          }
+          patch_rc=$(sed -n 's/^__TTMCDM_PATCH_RC=//p' logs/build.log | tail -n1)
+          deps_rc=$(sed -n 's/^__TTMCDM_DEPS_RC=//p' logs/build.log | tail -n1)
+          build_rc=$(sed -n 's/^__TTMCDM_BUILD_RC=//p' logs/build.log | tail -n1)
+          patch_status=$(rc_to_status "$patch_rc")
+          deps_status=$(rc_to_status "$deps_rc")
+          build_status=$(rc_to_status "$build_rc")
+          failure_stage="na"
+          if [ "$patch_status" = "failure" ]; then
+            failure_stage="patch"
+          elif [ "$deps_status" = "failure" ]; then
+            failure_stage="deps"
+          elif [ "$build_status" = "failure" ]; then
+            failure_stage="build"
+          elif [ "$patched_rc" -ne 0 ]; then
+            failure_stage="build"
+            if [ "$patch_status" = "skipped" ]; then
+              failure_stage="patch"
+              patch_status="failure"
+            fi
+          fi
+
+          echo "patch_status=$patch_status" >> "$GITHUB_OUTPUT"
+          echo "deps_status=$deps_status" >> "$GITHUB_OUTPUT"
+          echo "build_status=$build_status" >> "$GITHUB_OUTPUT"
+          echo "failure_stage=$failure_stage" >> "$GITHUB_OUTPUT"
           echo "::endgroup::"
+          if [ "$patched_rc" -ne 0 ]; then
+            exit "$patched_rc"
+          fi
 
       - name: Verify build artifacts
         id: artifacts
@@ -346,7 +409,13 @@ jobs:
           mkdir -p logs
           status="${{ job.status }}"
           vanilla="${{ steps.build.outputs.vanilla_status }}"
+          vanilla_failure_stage="${{ steps.build.outputs.vanilla_failure_stage }}"
           patch_count="${{ steps.build.outputs.patch_count }}"
+          patch_status_patched="${{ steps.build.outputs.patch_status }}"
+          deps_status_patched="${{ steps.build.outputs.deps_status }}"
+          build_status_patched="${{ steps.build.outputs.build_status }}"
+          failure_stage="${{ steps.build.outputs.failure_stage }}"
+          artifact_status="${{ steps.artifacts.outcome }}"
           # New per-leg install fields.
           install_status_vanilla="${{ steps.install-vanilla.outputs.install_status_vanilla }}"
           install_repo_present_vanilla="${{ steps.install-vanilla.outputs.install_repo_present_vanilla }}"
@@ -364,7 +433,16 @@ jobs:
           # Defaults if the build step did not run far enough to set
           # outputs (e.g. checkout failed).
           vanilla="${vanilla:-na}"
+          vanilla_failure_stage="${vanilla_failure_stage:-na}"
           patch_count="${patch_count:-0}"
+          patch_status_patched="${patch_status_patched:-skipped}"
+          deps_status_patched="${deps_status_patched:-skipped}"
+          build_status_patched="${build_status_patched:-skipped}"
+          artifact_status="${artifact_status:-skipped}"
+          failure_stage="${failure_stage:-na}"
+          if [ "${artifact_status}" = "failure" ] && [ "${failure_stage}" = "na" ]; then
+            failure_stage="verify"
+          fi
           install_status_vanilla="${install_status_vanilla:-na}"
           install_status_patched="${install_status_patched:-na}"
           install_patch_count="${install_patch_count:-0}"
@@ -409,7 +487,13 @@ jobs:
             "run_url":  "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
             "status":   "${status}",
             "vanilla_status": "${vanilla}",
+            "vanilla_failure_stage": "${vanilla_failure_stage}",
             "patch_count":    ${patch_count},
+            "patch_status_patched": "${patch_status_patched}",
+            "deps_status_patched":  "${deps_status_patched}",
+            "build_status_patched": "${build_status_patched}",
+            "artifact_status":      "${artifact_status}",
+            "failure_stage":        "${failure_stage}",
             "install_status_vanilla":       "${install_status_vanilla}",
             "install_repo_present_vanilla": ${irp_v_json},
             "install_repo_files_vanilla":   "${install_repo_files_vanilla}",
