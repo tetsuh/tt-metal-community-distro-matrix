@@ -51,7 +51,7 @@ The build pipeline above only exercises the deps/build path of `tt-metal` itself
 |---|---|
 | ✅ | Pipeline completed successfully on the latest run |
 | ❌ | Pipeline failed; see the linked log for details |
-| ❌(patch/deps/build/verify/install) | Pipeline failed in the named phase |
+| ❌(patch/deps/build/verify/install/workflow) | Pipeline failed in the named phase |
 | ⏳ | Scheduled but not yet executed |
 | — | Not applicable for this distribution / phase |
 
