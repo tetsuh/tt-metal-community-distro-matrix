@@ -89,7 +89,7 @@ Patches in this repository are kept as standalone `git format-patch` files so th
 │   └── rocky/
 │       ├── 9/Dockerfile
 │       └── 10/Dockerfile
-├── history/              # per-run JSON snapshots (populated from Burst 2.6)
+├── history/              # per-run JSON snapshots from scheduled / full-matrix runs
 ├── docs/                 # contributor docs (populated from Burst 3.2)
 └── .github/workflows/    # CI definitions (populated from Burst 1.2)
 ```
@@ -99,12 +99,14 @@ See [`os/README.md`](./os/README.md) for the conventions used in distribution di
 ## How it works
 
 1. Each supported distribution has a `Dockerfile` under `os/<distro>/<version>/`.
-2. GitHub Actions builds these images on a schedule and on every push to `main`.
+2. GitHub Actions builds these images on weekly scheduled full-matrix runs and on manual dispatches.
 3. Inside each container, the `tt-metal` build is executed against a pinned commit (or `main`) using upstream CI conventions adapted for an environment without Tenstorrent hardware.
-4. A summary script regenerates the table above and commits the change back to `main`.
+4. A summary script regenerates the table above and opens a bot PR with both README changes and raw JSON history snapshots.
 5. Per-run logs are uploaded as workflow artifacts and linked from the `Logs` column.
 
-History (raw JSON) lives under [`history/`](./history) once Burst 2.6 introduces scheduled runs.
+## History
+
+Scheduled and full-matrix manual runs persist raw status snapshots under [`history/runs/<run_id>/`](./history/runs/). Each OS gets one JSON file with the same fields uploaded as the workflow artifact, including phase-aware build and install status. [`history/latest.json`](./history/latest.json) points at the newest recorded run, and [`history/index.json`](./history/index.json) keeps a compact run list for future visualization.
 
 ## Planned distributions
 

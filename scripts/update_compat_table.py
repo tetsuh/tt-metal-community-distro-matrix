@@ -18,6 +18,7 @@ Usage::
 
 Optional flags:
     --readme PATH        path to README.md (default: ./README.md)
+    --history-dir PATH   persist per-run JSON snapshots under this directory
     --check              do not write; exit 1 if the README would change
 """
 from __future__ import annotations
@@ -70,6 +71,7 @@ INSTALL_HEADER_NOTE = (
     "*Auto-generated. tt-installer phase is opt-in per OS; "
     "rows marked `—` are not yet wired into CI.*"
 )
+HISTORY_SCHEMA_VERSION = 1
 
 
 def collect(artifacts_dir: Path) -> dict[str, dict]:
@@ -98,6 +100,145 @@ def collect(artifacts_dir: Path) -> dict[str, dict]:
             continue
         by_os[os_id] = data
     return by_os
+
+
+def ordered_results(by_os: dict[str, dict]) -> list[tuple[str, dict]]:
+    """Return results in table order, with unknown OSes appended alphabetically."""
+    ordered: list[tuple[str, dict]] = []
+    seen: set[str] = set()
+    for os_id, _ in ROW_ORDER:
+        if os_id in by_os:
+            ordered.append((os_id, by_os[os_id]))
+            seen.add(os_id)
+    for os_id in sorted(set(by_os) - seen):
+        ordered.append((os_id, by_os[os_id]))
+    return ordered
+
+
+def first_value(results: list[tuple[str, dict]], key: str) -> str:
+    """Return the first non-empty string value for ``key`` in ordered results."""
+    for _, data in results:
+        value = data.get(key)
+        if value:
+            return str(value)
+    return ""
+
+
+def safe_path_component(value: str) -> str:
+    """Sanitize a JSON-derived identifier before using it in a path."""
+    safe = "".join(ch if ch.isalnum() or ch in "._-" else "-" for ch in value)
+    return safe.strip(".-") or "unknown"
+
+
+def write_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
+def history_summary(data: dict) -> dict:
+    """Return the compact per-OS summary stored in history/latest and index."""
+    return {
+        "target_os": data.get("target_os", ""),
+        "distro": data.get("distro", ""),
+        "version": data.get("version", ""),
+        "status": data.get("status", ""),
+        "vanilla_status": data.get("vanilla_status", ""),
+        "vanilla_failure_stage": data.get("vanilla_failure_stage", ""),
+        "failure_stage": data.get("failure_stage", ""),
+        "patch_count": data.get("patch_count", 0),
+        "install_status_vanilla": (
+            data.get("install_status_vanilla")
+            or data.get("install_status")
+            or "na"
+        ),
+        "install_status_patched": data.get("install_status_patched", "na"),
+        "install_patch_count": data.get("install_patch_count", 0),
+    }
+
+
+def build_history_entry(
+    results: list[tuple[str, dict]],
+    recorded_at: str,
+    run_id: str,
+    run_dir: str,
+) -> dict:
+    """Build the compact run-level entry used by latest.json and index.json."""
+    return {
+        "schema_version": HISTORY_SCHEMA_VERSION,
+        "recorded_at": recorded_at,
+        "run_id": run_id,
+        "run_dir": run_dir,
+        "run_url": first_value(results, "run_url"),
+        "tt_metal_repo": first_value(results, "tt_metal_repo"),
+        "tt_metal_ref": first_value(results, "tt_metal_ref"),
+        "tt_metal_sha": first_value(results, "tt_metal_sha"),
+        "target_count": len(results),
+        "targets": [history_summary(data) for _, data in results],
+    }
+
+
+def write_history(by_os: dict[str, dict], history_dir: Path) -> None:
+    """Persist raw per-run status JSON plus compact latest/index files."""
+    results = ordered_results(by_os)
+    if not results:
+        print("history unchanged: no OS results found")
+        return
+
+    recorded_at = (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    run_ids = sorted(
+        {str(data.get("run_id")) for _, data in results if data.get("run_id")}
+    )
+    run_id = run_ids[0] if len(run_ids) == 1 else f"mixed-{recorded_at}"
+    run_id_safe = safe_path_component(run_id)
+    run_dir = f"runs/{run_id_safe}"
+    run_path = history_dir / run_dir
+
+    for os_id, data in results:
+        snapshot = dict(data)
+        snapshot["history_schema_version"] = HISTORY_SCHEMA_VERSION
+        snapshot["history_recorded_at"] = recorded_at
+        write_json(run_path / f"{safe_path_component(os_id)}.json", snapshot)
+
+    entry = build_history_entry(results, recorded_at, run_id, run_dir)
+    write_json(history_dir / "latest.json", entry)
+
+    index_path = history_dir / "index.json"
+    if index_path.exists():
+        try:
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SystemExit(f"cannot parse {index_path}: {exc}") from exc
+        if not isinstance(index, dict):
+            raise SystemExit(f"{index_path} is not a JSON object")
+        runs = index.get("runs", [])
+        if not isinstance(runs, list):
+            raise SystemExit(f"{index_path}: runs must be a list")
+    else:
+        runs = []
+
+    runs = [
+        run
+        for run in runs
+        if not isinstance(run, dict) or str(run.get("run_id")) != run_id
+    ]
+    runs.insert(0, entry)
+    write_json(
+        index_path,
+        {
+            "schema_version": HISTORY_SCHEMA_VERSION,
+            "updated_at": recorded_at,
+            "runs": runs,
+        },
+    )
+    print(f"history updated: {run_dir} ({len(results)} OS result(s))")
 
 
 def status_cell(status: str, stage: str = "") -> str:
@@ -282,6 +423,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--artifacts-dir", required=True, type=Path)
     ap.add_argument("--readme", default=Path("README.md"), type=Path)
+    ap.add_argument("--history-dir", type=Path,
+                    help="write per-run status snapshots and history index")
     ap.add_argument("--check", action="store_true",
                     help="exit 1 if the README would change; do not write")
     ap.add_argument("--require-os", nargs="+", default=[],
@@ -327,6 +470,8 @@ def main() -> int:
 
     if old != new:
         args.readme.write_text(new, encoding="utf-8")
+    if args.history_dir:
+        write_history(by_os, args.history_dir)
     print(f"processed {len(by_os)} OS result(s); README {'updated' if old != new else 'unchanged'}")
     return 0
 
