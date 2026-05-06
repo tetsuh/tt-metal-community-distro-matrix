@@ -72,6 +72,7 @@ INSTALL_HEADER_NOTE = (
     "rows marked `—` are not yet wired into CI.*"
 )
 HISTORY_SCHEMA_VERSION = 1
+HISTORY_INDEX_LIMIT = 100
 
 
 def collect(artifacts_dir: Path) -> dict[str, dict]:
@@ -230,6 +231,7 @@ def write_history(by_os: dict[str, dict], history_dir: Path) -> None:
         if not isinstance(run, dict) or str(run.get("run_id")) != run_id
     ]
     runs.insert(0, entry)
+    runs = runs[:HISTORY_INDEX_LIMIT]
     write_json(
         index_path,
         {
