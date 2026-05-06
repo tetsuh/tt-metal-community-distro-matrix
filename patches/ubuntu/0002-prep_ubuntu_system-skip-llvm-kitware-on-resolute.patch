@@ -30,8 +30,8 @@ without any third-party APT sources.
 Distro-Scope: ubuntu-26.04
 Upstream-Status: Pending
 ---
- install_dependencies.sh | 47 +++++++++++++++++++++++++++++++----------
- 1 file changed, 36 insertions(+), 11 deletions(-)
+ install_dependencies.sh | 51 ++++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 34 insertions(+), 17 deletions(-)
 diff --git a/install_dependencies.sh b/install_dependencies.sh
 index 6bc9158..8762d53 100644
 --- a/install_dependencies.sh
@@ -78,14 +78,21 @@ index 6bc9158..8762d53 100644
 +            # Add the repository to sources list and update
 +            echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $OS_CODENAME main" | tee /etc/apt/sources.list.d/kitware.list >/dev/null
 +            apt-get update
+-
 +
+-    # If the kitware-archive-keyring package was not installed previously, remove the manually obtained key to make room for the package
+-    test -f /usr/share/doc/kitware-archive-keyring/copyright || rm /usr/share/keyrings/kitware-archive-keyring.gpg
 +            # If the kitware-archive-keyring package was not installed previously, remove the manually obtained key to make room for the package
 +            test -f /usr/share/doc/kitware-archive-keyring/copyright || rm /usr/share/keyrings/kitware-archive-keyring.gpg
+-
 +
+-    # Install the kitware-archive-keyring package to ensure that your keyring stays up to date as keys are rotated
+-    apt-get install -y --no-install-recommends kitware-archive-keyring
 +            # Install the kitware-archive-keyring package to ensure that your keyring stays up to date as keys are rotated
 +            apt-get install -y --no-install-recommends kitware-archive-keyring
 +
 +            ;;
++    esac
  
      # Add GCC toolchain repository for specific g++ versions if needed
      case "$UBUNTU_CODENAME" in
