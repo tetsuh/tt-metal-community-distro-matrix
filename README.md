@@ -104,6 +104,12 @@ See [`os/README.md`](./os/README.md) for the conventions used in distribution di
 4. A summary script regenerates the table above and opens a bot PR with both README changes and raw JSON history snapshots.
 5. Per-run logs are uploaded as workflow artifacts and linked from the `Logs` column.
 
+## Bot PR review policy
+
+Scheduled runs are automated detection, not automated publication. When a scheduled or full-matrix manual run opens a bot PR, the maintainer reviews the workflow result and README/history diff before squash-merging it. Bot PRs are not auto-merged.
+
+If a run shows only known expected failures, the bot PR can be merged after a light review. If it shows a new failure, inspect the linked logs first; merge the PR when the failure should be published as the current compatibility state, or rerun/close it when the result is a transient infrastructure issue.
+
 ## History
 
 Scheduled and full-matrix manual runs persist raw status snapshots under [`history/runs/<run_id>/`](./history/runs/). Each OS gets one JSON file with the same fields uploaded as the workflow artifact, including phase-aware build and install status. [`history/latest.json`](./history/latest.json) points at the newest recorded run, and [`history/index.json`](./history/index.json) keeps a compact run list for future visualization.
