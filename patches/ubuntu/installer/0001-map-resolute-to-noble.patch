@@ -1,0 +1,60 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tetsuya Hayashi <tetsu.h@gmail.com>
+Date: Tue, 5 May 2026 00:00:00 +0900
+Subject: [PATCH] installer: map Ubuntu 26.04 (resolute) to noble for the
+ Tenstorrent PPA
+
+The Tenstorrent apt repository at ``https://ppa.tenstorrent.com/ubuntu/``
+currently publishes ``jammy`` (22.04) and ``noble`` (24.04) pockets only.
+On Ubuntu 26.04 LTS ("Resolute Raccoon") the upstream installer derives
+the pocket name from ``VERSION_CODENAME=resolute`` and the resulting
+``apt-get update`` aborts with HTTP 404, which prevents the rest of the
+installer from running.
+
+Until Tenstorrent ships a 26.04 pocket, fall back to the closest
+supported pocket (``noble``) when the running release's codename is
+known to be unsupported.  Prefer ``UBUNTU_CODENAME`` (which Ubuntu
+derivatives such as Linux Mint set to the upstream codename) and fall
+back to ``VERSION_CODENAME`` for vanilla Ubuntu, mirroring the Linux
+Mint installer patch in this repository.  Fail loudly when neither is
+set so we never silently produce a broken ``sources.list`` entry.
+
+Tested on:
+  * Ubuntu 26.04 (vanilla)            -> resolute remapped to noble
+  * Ubuntu 24.04 (vanilla)            -> uses VERSION_CODENAME=noble unchanged
+  * Ubuntu 22.04 (vanilla)            -> uses VERSION_CODENAME=jammy unchanged
+
+Upstream-Status: Pending [tenstorrent/tt-installer]
+Signed-off-by: Tetsuya Hayashi <tetsu.h@gmail.com>
+---
+ install.m4 | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/install.m4 b/install.m4
+index 0000000..0000001 100644
+--- a/install.m4
++++ b/install.m4
+@@ -736,7 +736,20 @@ install_tt_repos () {
+ 		"ubuntu")
+ 			# Add the apt listing
+ 			# shellcheck disable=2002
+-			echo "deb [signed-by=/etc/apt/keyrings/tt-pkg-key.asc] https://ppa.tenstorrent.com/ubuntu/ $( cat /etc/os-release | grep "^VERSION_CODENAME=" | sed 's/^VERSION_CODENAME=//' ) main" | sudo tee /etc/apt/sources.list.d/tenstorrent.list > /dev/null
++			# Prefer UBUNTU_CODENAME (set to the upstream codename on Ubuntu
++			# derivatives such as Linux Mint) and fall back to VERSION_CODENAME
++			# for vanilla Ubuntu.
++			codename=$(. /etc/os-release && printf '%s' "${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}")
++			# ppa.tenstorrent.com only publishes jammy / noble pockets; map
++			# newer Ubuntu LTS releases that have not yet been added upstream
++			# onto the closest supported pocket so the installer can proceed.
++			case "${codename}" in
++				resolute) codename=noble ;;
++			esac
++			if [[ -z "${codename}" ]]; then
++				error_exit "Could not determine apt repository codename from /etc/os-release (need UBUNTU_CODENAME or VERSION_CODENAME)"
++			fi
++			echo "deb [signed-by=/etc/apt/keyrings/tt-pkg-key.asc] https://ppa.tenstorrent.com/ubuntu/ ${codename} main" | sudo tee /etc/apt/sources.list.d/tenstorrent.list > /dev/null
+ 
+ 			# Setup the keyring
+ 			sudo mkdir -p /etc/apt/keyrings; sudo chmod 755 /etc/apt/keyrings
+-- 
+2.43.0

@@ -1,0 +1,62 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tetsuya Hayashi <tetsu.h@gmail.com>
+Date: Mon, 5 May 2026 00:00:00 +0900
+Subject: [PATCH] build_metal: preset cmake flags to bypass cmake 4.x
+ try_compile/try_run failures on Ubuntu 26.04 (resolute)
+
+On Ubuntu 26.04 (resolute) with cmake 4.2 + clang-20, several cmake
+configure failures occur.  All three additions are guarded by a codename
+check so they do not affect Ubuntu 22.04 / 24.04.
+
+1. benchmark v1.9.1 (HAVE_STD_REGEX):
+   CXXFeatureCheck.cmake's try_run returns FAILED_TO_RUN for all three
+   regex backends (STD_REGEX, GNU_POSIX_REGEX, POSIX_REGEX), causing:
+     CMake Error: Failed to determine the source files for the regular
+     expression backend
+   Pre-setting HAVE_STD_REGEX=1 triggers benchmark's early-exit path in
+   cxx_feature_check() to skip try_run entirely.
+
+2. capnproto (HAS_CXX14):
+   check_include_file_cxx(initializer_list HAS_CXX14 "-std=gnu++1y")
+   fails even with g++-15 and libstdc++-15-dev installed, causing:
+     CMake Error: Requires a C++14 compiler and standard library.
+   Pre-setting HAS_CXX14=1 causes cmake's CHECK_INCLUDE_FILE_CXX macro
+   to skip the try_compile check (it guards with "if(NOT DEFINED VAR)").
+
+3. flatbuffers (and potentially other subprojects): C++ headers not found
+   clang-20's GCCInstallationDetector does not auto-detect gcc-15 on
+   Ubuntu 26.04 (known upstream bug, fixed in clang-21).  The Dockerfile
+   wrapper script in /usr/local/bin/ covers clang invocations that cmake
+   controls directly; CMAKE_CXX_FLAGS additionally covers cmake subproject
+   builds that invoke a separate cmake configure step.
+
+Upstream-Status: Pending [cmake 4.x subproject try_compile/try_run
+  behavior change; clang-20 gcc detection on Ubuntu 26.04 with gcc-15]
+
+---
+ build_metal.sh | 11 +++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/build_metal.sh b/build_metal.sh
+index ede4b98..0000000 100755
+--- a/build_metal.sh
++++ b/build_metal.sh
+@@ -419,6 +419,18 @@ if [ "$cxx_compiler_path" == "" ]; then
+     cmake_args+=("-DCMAKE_TOOLCHAIN_FILE=${toolchain_path}")
+ fi
+ 
++# Ubuntu 26.04 (resolute): cmake 4.x + clang-20 + gcc-15 workarounds.
++# Guarded by codename so this does not affect Ubuntu 22.04 / 24.04.
++_b22_codename=$(. /etc/os-release 2>/dev/null && printf '%s' "${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}")
++if [ "${_b22_codename}" = "resolute" ]; then
++    cmake_args+=("-DHAVE_STD_REGEX=1")     # benchmark try_run fails under cmake 4.x
++    cmake_args+=("-DHAS_CXX14=1")          # capnproto check_include_file_cxx fails
++    # clang-20 GCCInstallationDetector does not auto-detect gcc-15 (fixed in
++    # clang-21).  The Dockerfile wrapper covers clang invocations cmake controls;
++    # this flag additionally covers cmake subproject builds.
++    cmake_args+=("-DCMAKE_CXX_FLAGS=--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/15")
++fi
++
+ echo "INFO: Configuring Project"
+ echo "INFO: Running: cmake "${cmake_args[@]}""
+ cmake "${cmake_args[@]}"
