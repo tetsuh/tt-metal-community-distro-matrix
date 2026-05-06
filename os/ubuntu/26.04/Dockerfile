@@ -1,4 +1,4 @@
-# Dockerfile for Ubuntu 26.04 LTS "Resolute Wombat".
+# Dockerfile for Ubuntu 26.04 LTS "Resolute Raccoon".
 #
 # Used by build-tt-metal.yaml as a *next-LTS canary*: the Tenstorrent apt
 # repository (ppa.tenstorrent.com) does not yet publish a `resolute`

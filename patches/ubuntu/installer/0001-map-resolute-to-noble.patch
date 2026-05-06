@@ -6,7 +6,7 @@ Subject: [PATCH] installer: map Ubuntu 26.04 (resolute) to noble for the
 
 The Tenstorrent apt repository at ``https://ppa.tenstorrent.com/ubuntu/``
 currently publishes ``jammy`` (22.04) and ``noble`` (24.04) pockets only.
-On Ubuntu 26.04 LTS ("Resolute Wombat") the upstream installer derives
+On Ubuntu 26.04 LTS ("Resolute Raccoon") the upstream installer derives
 the pocket name from ``VERSION_CODENAME=resolute`` and the resulting
 ``apt-get update`` aborts with HTTP 404, which prevents the rest of the
 installer from running.

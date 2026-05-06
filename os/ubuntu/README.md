@@ -8,7 +8,7 @@ reproducible from the Mint matrix.
 
 ## Why Ubuntu 26.04 is in the matrix
 
-Ubuntu 26.04 LTS ("Resolute Wombat") is the next LTS after 24.04 noble.
+Ubuntu 26.04 LTS ("Resolute Raccoon") is the next LTS after 24.04 noble.
 At the time it was added to this matrix the Tenstorrent apt repository
 (`https://ppa.tenstorrent.com/ubuntu/<codename>`) only publishes
 `jammy` and `noble` pockets; the upstream `tt-installer` derives the
