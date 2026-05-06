@@ -30,7 +30,7 @@ without any third-party APT sources.
 Distro-Scope: ubuntu-26.04
 Upstream-Status: Pending
 ---
- install_dependencies.sh | 49 ++++++++++++++++++++++++++++++++-----------------
+ install_dependencies.sh | 51 ++++++++++++++++++++++++++++++++++-----------------
  1 file changed, 34 insertions(+), 17 deletions(-)
 diff --git a/install_dependencies.sh b/install_dependencies.sh
 index 6bc9158..8762d53 100644
