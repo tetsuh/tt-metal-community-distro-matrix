@@ -29,6 +29,13 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # no longer pulls in libstdc++-dev as a dependency, so the libstdc++.so
 # symlink (needed by ld when linking with -lstdc++) would otherwise be
 # absent and cmake's CXX compiler test fails immediately.
+#
+# The ln -sf below creates the libstdc++.so symlink explicitly.  This is
+# belt-and-suspenders alongside the clang wrapper scripts: if cmake or a
+# subproject invokes /usr/bin/clang++-20 directly (bypassing the wrapper),
+# the --gcc-install-dir flag is absent and the linker falls back to
+# searching /usr/lib/x86_64-linux-gnu/ — where the symlink ensures
+# libstdc++.so is found.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
         ca-certificates \
