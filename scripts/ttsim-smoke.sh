@@ -13,7 +13,8 @@ fi
 ARCHITECTURE="${TTSIM_ARCHITECTURE:-blackhole}"
 TIMEOUT_SECONDS="${TTSIM_TIMEOUT_SECONDS:-300}"
 TEST_TARGET="${TTSIM_TEST_TARGET:-test_risc_compute.py::test_risc_compute}"
-export TTSIM_CACHE_DIR="${TTSIM_CACHE_DIR:-${PWD}/ttsim-cache}"
+TTSIM_CACHE_DIR="${TTSIM_CACHE_DIR:-${PWD}/ttsim-cache}"
+export TTSIM_CACHE_DIR="$(realpath -m "${TTSIM_CACHE_DIR}")"
 
 echo "tt-metal directory : ${TT_METAL_DIR}"
 echo "LLK tests directory: ${LLK_TESTS_DIR}"
