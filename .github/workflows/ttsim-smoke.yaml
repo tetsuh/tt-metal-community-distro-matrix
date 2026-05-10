@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   smoke:
-    name: ttsim canonical smoke
+    name: ttsim LLK smoke
     # Ubuntu 22.04 keeps python3 at 3.10, matching tt-metal's LLK external
     # test setup script. This is intentionally a reference-host smoke, not a
     # per-distro matrix result.
@@ -63,7 +63,7 @@ jobs:
           TTSIM_ARCHITECTURE: blackhole
           TTSIM_TIMEOUT_SECONDS: '300'
           TTSIM_WORKERS: '0'
-          TTSIM_TEST_TARGET: auto
+          TTSIM_TEST_TARGET: test_risc_compute.py::test_risc_compute
         run: |
           bash scripts/ttsim-smoke.sh tt-metal
 

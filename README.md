@@ -49,7 +49,7 @@ The build pipeline above only exercises the deps/build path of `tt-metal` itself
 
 [![ttsim smoke](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/workflows/ttsim-smoke.yaml/badge.svg)](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/workflows/ttsim-smoke.yaml)
 
-This repository also provides a small [`ttsim`](https://github.com/tenstorrent/ttsim) smoke workflow for hardwareless execution coverage. It runs a single Float16_b / no-tilize LLK datacopy case from tt-metal's canonical simulator smoke on a reference Ubuntu 22.04 host, using the simulator version pinned by the checked-out tt-metal tree.
+This repository also provides a small [`ttsim`](https://github.com/tenstorrent/ttsim) smoke workflow for hardwareless execution coverage. It runs a single LLK RISC compute smoke test on a reference Ubuntu 22.04 host, using the simulator version pinned by the checked-out tt-metal tree.
 
 This check is intentionally separate from the distribution matrix above: it verifies that a minimal simulator-backed workload can execute without Tenstorrent hardware, but it is not a per-distro compatibility result and is not a substitute for validation on physical devices.
 
