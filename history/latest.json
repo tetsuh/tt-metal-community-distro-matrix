@@ -1,8 +1,8 @@
 {
-  "recorded_at": "2026-05-06T12:32:36Z",
-  "run_dir": "runs/25433729633",
-  "run_id": "25433729633",
-  "run_url": "https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25433729633",
+  "recorded_at": "2026-05-10T19:14:07Z",
+  "run_dir": "runs/25636587988",
+  "run_id": "25636587988",
+  "run_url": "https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988",
   "schema_version": 1,
   "target_count": 9,
   "targets": [
@@ -126,5 +126,5 @@
   ],
   "tt_metal_ref": "main",
   "tt_metal_repo": "tenstorrent/tt-metal",
-  "tt_metal_sha": "a215b12c7594d4d79876579a7884b2b856c80236"
+  "tt_metal_sha": "3f39ff3267cd48366885084aa9027f3cf556b2d4"
 }
