@@ -63,7 +63,7 @@ jobs:
           TTSIM_ARCHITECTURE: blackhole
           TTSIM_TIMEOUT_SECONDS: '300'
           TTSIM_WORKERS: '0'
-          TTSIM_TEST_TARGET: 'test_eltwise_unary_datacopy.py::test_unary_datacopy[formats::Float16_b->Float16_b-dest_acc::No-num_faces::4-tilize::No-input_dimensions::[64, 64]]'
+          TTSIM_TEST_TARGET: auto
         run: |
           bash scripts/ttsim-smoke.sh tt-metal
 
