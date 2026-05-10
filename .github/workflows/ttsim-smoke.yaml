@@ -1,0 +1,76 @@
+name: ttsim smoke
+
+run-name: ttsim smoke (${{ inputs.tt_metal_ref || 'main' }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      tt_metal_repo:
+        description: 'Upstream tt-metal repository (owner/name)'
+        required: true
+        default: 'tenstorrent/tt-metal'
+      tt_metal_ref:
+        description: 'Branch, tag or commit SHA to smoke-test'
+        required: true
+        default: 'main'
+  pull_request:
+    paths:
+      - '.github/workflows/ttsim-smoke.yaml'
+      - 'scripts/ttsim-smoke.sh'
+      - 'README.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ttsim-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: ttsim LLK smoke
+    # Ubuntu 22.04 keeps python3 at 3.10, matching tt-metal's LLK external
+    # test setup script. This is intentionally a reference-host smoke, not a
+    # per-distro matrix result.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v5
+
+      - name: Checkout tt-metal
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ inputs.tt_metal_repo || 'tenstorrent/tt-metal' }}
+          path: tt-metal
+          ref: ${{ inputs.tt_metal_ref || 'main' }}
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Cache ttsim and SFPI artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ttsim-cache
+            tt-metal/tt_metal/tt-llk/tests/sfpi
+          key: ${{ runner.os }}-ttsim-smoke-${{ hashFiles('tt-metal/tt_metal/tt-llk/tests/ttsim-version', 'tt-metal/tt_metal/tt-llk/tests/sfpi-version') }}
+
+      - name: Run canonical ttsim smoke
+        env:
+          TTSIM_CACHE_DIR: ${{ github.workspace }}/ttsim-cache
+          TTSIM_ARCHITECTURE: blackhole
+          TTSIM_TIMEOUT_SECONDS: '300'
+          TTSIM_TEST_TARGET: test_risc_compute.py::test_risc_compute
+        run: |
+          bash scripts/ttsim-smoke.sh tt-metal
+
+      - name: Upload ttsim smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ttsim-smoke-report
+          path: tt-metal/tt_metal/tt-llk/tests/python_tests/ttsim_results/
+          if-no-files-found: warn
+          retention-days: 14

@@ -45,6 +45,14 @@ The build pipeline above only exercises the deps/build path of `tt-metal` itself
 | Rocky Linux 9 | ✅ (`v2.2.1`) | ✅ (no patches) | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25433729633) |
 <!-- INSTALL_TABLE_END -->
 
+### Hardwareless ttsim smoke
+
+[![ttsim smoke](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/workflows/ttsim-smoke.yaml/badge.svg)](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/workflows/ttsim-smoke.yaml)
+
+This repository also provides a small [`ttsim`](https://github.com/tenstorrent/ttsim) smoke workflow for hardwareless execution coverage. It runs a single LLK RISC compute smoke test on a reference Ubuntu 22.04 host, using the simulator version pinned by the checked-out tt-metal tree.
+
+This check is intentionally separate from the distribution matrix above: it verifies that a minimal simulator-backed workload can execute without Tenstorrent hardware, but it is not a per-distro compatibility result and is not a substitute for validation on physical devices.
+
 ### Legend
 
 | Symbol | Meaning |
