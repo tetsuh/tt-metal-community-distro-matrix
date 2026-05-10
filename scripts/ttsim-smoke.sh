@@ -13,13 +13,13 @@ fi
 ARCHITECTURE="${TTSIM_ARCHITECTURE:-blackhole}"
 WORKERS="${TTSIM_WORKERS:-0}"
 TIMEOUT_SECONDS="${TTSIM_TIMEOUT_SECONDS:-300}"
-PYTEST_FILTER="${TTSIM_PYTEST_FILTER:-Float16_b and not tilize}"
+TEST_TARGET="${TTSIM_TEST_TARGET:-test_eltwise_unary_datacopy.py::test_unary_datacopy[formats::Float16_b->Float16_b-dest_acc::No-num_faces::4-tilize::No-input_dimensions::[64, 64]]}"
 export TTSIM_CACHE_DIR="${TTSIM_CACHE_DIR:-${PWD}/ttsim-cache}"
 
 echo "tt-metal directory : ${TT_METAL_DIR}"
 echo "LLK tests directory: ${LLK_TESTS_DIR}"
 echo "ttsim architecture : ${ARCHITECTURE}"
-echo "pytest filter      : ${PYTEST_FILTER}"
+echo "test target        : ${TEST_TARGET}"
 echo "timeout seconds    : ${TIMEOUT_SECONDS}"
 echo "workers            : ${WORKERS}"
 
@@ -31,7 +31,6 @@ source ./setup_external_testing_env.sh --reuse
     --architecture "${ARCHITECTURE}" \
     --workers "${WORKERS}" \
     --timeout "${TIMEOUT_SECONDS}" \
-    test_eltwise_unary_datacopy.py \
-    -- -k "${PYTEST_FILTER}"
+    "${TEST_TARGET}"
 
 popd >/dev/null
