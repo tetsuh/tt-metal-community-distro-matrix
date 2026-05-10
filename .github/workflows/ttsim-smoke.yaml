@@ -62,7 +62,6 @@ jobs:
           TTSIM_CACHE_DIR: ${{ github.workspace }}/ttsim-cache
           TTSIM_ARCHITECTURE: blackhole
           TTSIM_TIMEOUT_SECONDS: '300'
-          TTSIM_WORKERS: '0'
           TTSIM_TEST_TARGET: test_risc_compute.py::test_risc_compute
         run: |
           bash scripts/ttsim-smoke.sh tt-metal
