@@ -28,12 +28,25 @@ concurrency:
 
 jobs:
   smoke:
-    name: ttsim LLK smoke
+    name: ttsim LLK smoke (${{ matrix.smoke.id }})
     # Ubuntu 22.04 keeps python3 at 3.10, matching tt-metal's LLK external
     # test setup script. This is intentionally a reference-host smoke, not a
     # per-distro matrix result.
     runs-on: ubuntu-22.04
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        smoke:
+          - id: risc-compute
+            test_target: 'test_risc_compute.py::test_risc_compute'
+            pytest_k_expr: ''
+          # Use an exact node id for the datacopy lane. The upstream TTSIM.md
+          # -k smoke expression also matches the parameter name "tilize", which
+          # can select zero tests with current LLK pytest ids.
+          - id: datacopy-fp16b
+            test_target: 'test_eltwise_unary_datacopy.py::test_unary_datacopy[formats:Float16_b->Float16_b-dest_acc:No-num_faces:1-tilize:No-input_dimensions:[64, 64]]'
+            pytest_k_expr: ''
 
     steps:
       - name: Checkout this repository
@@ -62,7 +75,9 @@ jobs:
           TTSIM_CACHE_DIR: ${{ github.workspace }}/ttsim-cache
           TTSIM_ARCHITECTURE: blackhole
           TTSIM_TIMEOUT_SECONDS: '300'
-          TTSIM_TEST_TARGET: test_risc_compute.py::test_risc_compute
+          TTSIM_TEST_TARGET: ${{ matrix.smoke.test_target }}
+          TTSIM_PYTEST_K_EXPR: ${{ matrix.smoke.pytest_k_expr }}
+          TTSIM_REPORT_NAME: ttsim-${{ matrix.smoke.id }}
         run: |
           bash scripts/ttsim-smoke.sh tt-metal
 
@@ -70,7 +85,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ttsim-smoke-report
+          name: ttsim-smoke-report-${{ matrix.smoke.id }}
           path: tt-metal/tt_metal/tt-llk/tests/python_tests/ttsim_results/
           if-no-files-found: warn
           retention-days: 14

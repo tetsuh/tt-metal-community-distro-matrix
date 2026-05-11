@@ -12,15 +12,26 @@ fi
 
 ARCHITECTURE="${TTSIM_ARCHITECTURE:-blackhole}"
 TIMEOUT_SECONDS="${TTSIM_TIMEOUT_SECONDS:-300}"
+# TTSIM_TEST_TARGET is the pytest file or node id. Keep pytest options in
+# dedicated env vars so filters are passed as arguments, not shell-evaled text.
 TEST_TARGET="${TTSIM_TEST_TARGET:-test_risc_compute.py::test_risc_compute}"
+PYTEST_K_EXPR="${TTSIM_PYTEST_K_EXPR:-}"
+REPORT_NAME="${TTSIM_REPORT_NAME:-ttsim-smoke}"
 TTSIM_CACHE_DIR="${TTSIM_CACHE_DIR:-${PWD}/ttsim-cache}"
 export TTSIM_CACHE_DIR="$(realpath -m "${TTSIM_CACHE_DIR}")"
+
+if [[ ! "${REPORT_NAME}" =~ ^[A-Za-z0-9._-]+$ ]]; then
+    echo "ERROR: TTSIM_REPORT_NAME contains unsupported characters: ${REPORT_NAME}" >&2
+    exit 1
+fi
 
 echo "tt-metal directory : ${TT_METAL_DIR}"
 echo "LLK tests directory: ${LLK_TESTS_DIR}"
 echo "ttsim architecture : ${ARCHITECTURE}"
 echo "test target        : ${TEST_TARGET}"
+echo "pytest -k expr     : ${PYTEST_K_EXPR:-<none>}"
 echo "timeout seconds    : ${TIMEOUT_SECONDS}"
+echo "report name        : ${REPORT_NAME}"
 
 pushd "${LLK_TESTS_DIR}" >/dev/null
 
@@ -80,8 +91,14 @@ fi
 cp -f "${soc_src}" "${soc_path}"
 
 export TT_METAL_SIMULATOR="${so_path}"
+export TT_METAL_SLOW_DISPATCH_MODE="${TT_METAL_SLOW_DISPATCH_MODE:-1}"
 export DISABLE_SFPLOADMACRO="${DISABLE_SFPLOADMACRO:-1}"
 export TT_METAL_DISABLE_SFPLOADMACRO="${TT_METAL_DISABLE_SFPLOADMACRO:-1}"
+
+pytest_extra_args=()
+if [[ -n "${PYTEST_K_EXPR}" ]]; then
+    pytest_extra_args+=(-k "${PYTEST_K_EXPR}")
+fi
 
 (
     cd python_tests
@@ -89,10 +106,11 @@ export TT_METAL_DISABLE_SFPLOADMACRO="${TT_METAL_DISABLE_SFPLOADMACRO:-1}"
         -p no:sugar \
         --run-simulator \
         --timeout="${TIMEOUT_SECONDS}" \
-        --junit-xml="ttsim_results/ttsim-smoke.xml" \
+        --junit-xml="ttsim_results/${REPORT_NAME}.xml" \
         -o junit_logging=system-out \
         -o junit_log_passing_tests=False \
         -o log_cli=false \
+        "${pytest_extra_args[@]}" \
         "${TEST_TARGET}"
 )
 
