@@ -582,3 +582,109 @@ jobs:
             history/**
           author: "tt-metal-community-bot <bot@users.noreply.github.com>"
           committer: "tt-metal-community-bot <bot@users.noreply.github.com>"
+
+  notify-failure:
+    name: Notify full-matrix failure
+    needs: [setup, build]
+    if: >-
+      always() &&
+      (github.event_name == 'schedule' ||
+       (github.event_name == 'workflow_dispatch' && inputs.target_os == 'all')) &&
+      (needs.setup.result == 'failure' || needs.build.result == 'failure')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    steps:
+      - name: Open or update failure issue
+        uses: actions/github-script@v7
+        env:
+          TARGET_OS: ${{ inputs.target_os || 'all' }}
+          TT_METAL_REPO: ${{ inputs.tt_metal_repo || 'tenstorrent/tt-metal' }}
+          TT_METAL_REF: ${{ inputs.tt_metal_ref || 'main' }}
+          SETUP_RESULT: ${{ needs.setup.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        with:
+          script: |
+            const marker = '<!-- ttmcdm-ci-failure:build-tt-metal:full-matrix -->';
+            const title = 'CI failure: full-matrix build-tt-metal';
+            const {owner, repo} = context.repo;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              owner,
+              repo,
+              run_id: context.runId,
+              per_page: 100,
+            });
+            const failedJobs = jobs
+              .filter((job) =>
+                job.name !== 'Notify full-matrix failure' &&
+                job.status === 'completed' &&
+                job.conclusion &&
+                job.conclusion !== 'success' &&
+                job.conclusion !== 'skipped'
+              )
+              .map((job) => `- ${job.name}: ${job.conclusion} (${job.html_url})`);
+
+            const failedJobsText = failedJobs.length
+              ? failedJobs.join('\n')
+              : `- setup: ${process.env.SETUP_RESULT}\n- build: ${process.env.BUILD_RESULT}`;
+
+            const details = [
+              marker,
+              '',
+              'A scheduled or full-matrix tt-metal compatibility run failed.',
+              '',
+              `- Run: ${runUrl}`,
+              `- Event: ${context.eventName}`,
+              `- Target OS: ${process.env.TARGET_OS}`,
+              `- tt-metal repo: ${process.env.TT_METAL_REPO}`,
+              `- tt-metal ref: ${process.env.TT_METAL_REF}`,
+              `- setup result: ${process.env.SETUP_RESULT}`,
+              `- build result: ${process.env.BUILD_RESULT}`,
+              '',
+              'Failed jobs:',
+              failedJobsText,
+              '',
+              'Next steps:',
+              '1. Inspect the failed job logs; when build jobs ran, also inspect uploaded `status.json` artifacts.',
+              '2. If a bot README/history PR exists, review whether it should be merged as the current compatibility state.',
+              '3. For setup-level failures or early build failures with no bot PR, triage directly from the logs and rerun or fix as needed.',
+              '4. Leave this issue open until a maintainer has triaged the failure; green follow-up runs do not auto-close it.',
+            ].join('\n');
+
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = openIssues.find((issue) =>
+              !issue.pull_request && issue.title === title
+            );
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body: [
+                  marker,
+                  '',
+                  'Another scheduled or full-matrix tt-metal compatibility run failed.',
+                  '',
+                  details.replace(marker + '\n\n', ''),
+                ].join('\n'),
+              });
+              core.info(`Updated existing failure issue #${existing.number}`);
+            } else {
+              const created = await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body: details,
+              });
+              core.info(`Created failure issue #${created.data.number}`);
+            }
