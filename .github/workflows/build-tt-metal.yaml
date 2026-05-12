@@ -575,7 +575,7 @@ jobs:
           body: |
             Auto-generated from workflow run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
 
-            This PR refreshes the `<!-- COMPAT_TABLE_START -->` / `<!-- COMPAT_TABLE_END -->` block in `README.md` and persists `history/` JSON snapshots based on the per-OS `status.json` files produced by the matrix build.
+            This PR refreshes the generated README compatibility and history summary blocks, then persists `history/` JSON snapshots and the static history SVG based on the per-OS `status.json` files produced by the matrix build.
           delete-branch: true
           add-paths: |
             README.md
