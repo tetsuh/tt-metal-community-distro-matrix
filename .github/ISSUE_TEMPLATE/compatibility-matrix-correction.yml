@@ -1,0 +1,42 @@
+name: Compatibility matrix correction
+description: Report a reproducible mismatch in the published matrix.
+title: "[matrix] <distro-version>: <summary>"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This repo tracks containerized build/install results only. It is not a hardware support or vendor support channel.
+  - type: input
+    id: target
+    attributes:
+      label: Target distro/version
+      description: Use the matrix target name when possible, such as `ubuntu-26.04` or `rocky-9`.
+      placeholder: ubuntu-26.04
+    validations:
+      required: true
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Matrix phase
+      options:
+        - tt-metal build
+        - tt-installer install phase
+        - README/history rendering
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Reproducible evidence
+      description: Link a workflow run, bot PR, log excerpt, or exact container reproduction. Do not include secrets.
+      placeholder: "Run URL, status.json snippet, or reproduction steps..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected matrix change
+      description: What should the matrix show instead, and why?
+    validations:
+      required: true

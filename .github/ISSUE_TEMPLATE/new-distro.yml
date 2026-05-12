@@ -1,0 +1,45 @@
+name: New distro or release
+description: Propose adding a distro/release to the compatibility matrix.
+title: "[new-os] <distro-version>"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please read `docs/adding-a-new-os.md` before proposing a new target. This repo validates containerized build/install behavior, not hardware support.
+  - type: input
+    id: distro_id
+    attributes:
+      label: "/etc/os-release ID"
+      description: This becomes `os/<distro>/<version>/` and `patches/<distro>/`.
+      placeholder: fedora
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: "41"
+    validations:
+      required: true
+  - type: input
+    id: base_image
+    attributes:
+      label: Proposed container base image
+      placeholder: quay.io/fedora/fedora:41
+    validations:
+      required: true
+  - type: checkboxes
+    id: phases
+    attributes:
+      label: Intended validation scope
+      options:
+        - label: tt-metal deps/build/verify path
+        - label: tt-installer install phase
+        - label: Local patches expected
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Rationale and known risks
+      description: Why should this distro be tracked, and what compatibility risks are already known?
+    validations:
+      required: true
