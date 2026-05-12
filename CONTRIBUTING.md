@@ -33,11 +33,12 @@ Follow [`docs/adding-a-new-os.md`](docs/adding-a-new-os.md). In short:
 1. Add `os/<distro>/<version>/Dockerfile`.
 2. Add the target to `.github/workflows/build-tt-metal.yaml`.
 3. Add or update patch documentation when local patches are needed.
-4. Run a single-target workflow first, then publish full-matrix results through
-   the generated bot PR.
+4. Run a single-target workflow first, either in a fork or by asking a
+   maintainer to dispatch it, then publish full-matrix results through the
+   generated bot PR.
 
-Use the `/etc/os-release` `ID` value as `<distro>` so patch discovery stays
-consistent.
+Use the `/etc/os-release` `ID` value as `<distro>` and `VERSION_ID` as
+`<version>` so workflow paths and patch discovery stay consistent.
 
 ## Generated files
 
