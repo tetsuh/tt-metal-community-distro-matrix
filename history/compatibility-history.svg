@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="142" viewBox="0 0 520 142" role="img" aria-labelledby="title desc">
+<title id="title">Compatibility history</title>
+<desc id="desc">Recent full-matrix patched build and installer outcomes.</desc>
+<rect width="100%" height="100%" fill="#ffffff" rx="8"/>
+<text x="12" y="22" font-size="14" font-weight="600" text-anchor="start" fill="#24292f">Compatibility history</text>
+<text x="12" y="40" font-size="11" font-weight="400" text-anchor="start" fill="#57606a">Latest: 2026-05-10</text>
+<text x="12" y="69" font-size="12" font-weight="600" text-anchor="start" fill="#24292f">Build</text>
+<text x="12" y="101" font-size="12" font-weight="600" text-anchor="start" fill="#24292f">Installer</text>
+<text x="98" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">05-06</text>
+<rect x="86" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>25433729633 build 9/9</title></rect>
+<rect x="86" y="84" width="24" height="24" rx="4" fill="#cf222e"><title>25433729633 installer 8/9</title></rect>
+<text x="130" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">05-10</text>
+<rect x="118" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>25636587988 build 9/9</title></rect>
+<rect x="118" y="84" width="24" height="24" rx="4" fill="#cf222e"><title>25636587988 installer 8/9</title></rect>
+<text x="12" y="126" font-size="10" font-weight="400" text-anchor="start" fill="#57606a">green: all known pass; red: at least one failure; amber: pass with unknowns</text>
+</svg>
