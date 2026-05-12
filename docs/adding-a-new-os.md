@@ -24,11 +24,12 @@ The workflow splits the identifier at the first `-`:
 
 - `<distro>` maps to `os/<distro>/`.
 - `<version>` maps to `os/<distro>/<version>/`.
-- `<distro>` should be lowercase and hyphen-free.
+- `<distro>` should be lowercase, hyphen-free, and match the OS `ID`.
 
 The patch directory is different: build patches are applied from
 `patches/<ID>/`, where `<ID>` is the `ID=` value from `/etc/os-release`
-inside the container.
+inside the container. Keeping `<distro>` aligned with that value avoids broken
+patch links in the generated README tables.
 
 ## 1. Add the Dockerfile
 
@@ -54,6 +55,14 @@ assume are already present. Common bootstrap packages are:
 - distro-specific repository tools such as `gnupg`, `gpg`, `lsb-release`,
   `dnf-plugins-core`, or `epel-release`
 
+The workflow verifies the image identity by reading `/etc/os-release` from the
+built image. If the Dockerfile is easy to mispoint at the wrong base image, add
+a cheap check such as:
+
+```Dockerfile
+RUN grep '^ID=ubuntu$' /etc/os-release
+```
+
 Do not copy this repository's compatibility patches into the image. The
 workflow applies patches at runtime so the vanilla and patched results remain
 observable separately.
@@ -77,6 +86,7 @@ Update `ROW_ORDER` in `scripts/update_compat_table.py`.
 
 ```python
 ROW_ORDER: list[tuple[str, str]] = [
+    # ...
     ("newdistro-1", "New Distro 1"),
 ]
 ```
@@ -178,7 +188,7 @@ PR. Bot PRs are not auto-merged.
 - [ ] `os/<distro>/<version>/Dockerfile` exists and verifies `/etc/os-release`.
 - [ ] `build-tt-metal.yaml` includes the target in dispatch options and the
       full matrix.
-- [ ] `scripts/update_compat_table.py::ROW_ORDER` includes the target.
+- [ ] `ROW_ORDER` in `scripts/update_compat_table.py` includes the target.
 - [ ] Install-phase wiring is added or intentionally omitted.
 - [ ] Build patches are under `patches/<ID>/` only if needed.
 - [ ] Installer patches are under `patches/<ID>/installer/` only if needed.
