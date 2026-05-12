@@ -649,9 +649,10 @@ jobs:
               failedJobsText,
               '',
               'Next steps:',
-              '1. Inspect the failed job logs and uploaded `status.json` artifacts.',
-              '2. Decide whether this is a real compatibility regression or transient infrastructure failure.',
-              '3. Leave this issue open until a maintainer has triaged the failure; green follow-up runs do not auto-close it.',
+              '1. Inspect the failed job logs; when build jobs ran, also inspect uploaded `status.json` artifacts.',
+              '2. If a bot README/history PR exists, review whether it should be merged as the current compatibility state.',
+              '3. For setup-level failures or early build failures with no bot PR, triage directly from the logs and rerun or fix as needed.',
+              '4. Leave this issue open until a maintainer has triaged the failure; green follow-up runs do not auto-close it.',
             ].join('\n');
 
             const openIssues = await github.paginate(github.rest.issues.listForRepo, {

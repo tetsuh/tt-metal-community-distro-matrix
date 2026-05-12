@@ -34,12 +34,15 @@ Each issue or comment includes:
 
 The notification is a triage signal, not an automatic diagnosis.
 
-1. Inspect the failed job logs and uploaded `status.json` artifacts.
+1. Inspect the failed job logs; when build jobs ran, also inspect uploaded
+   `status.json` artifacts.
 2. Decide whether the result is a real compatibility regression or a transient
    infrastructure failure.
-3. If the failure should be published as current compatibility state, merge the
-   bot README/history PR after review.
-4. Close the notification issue manually after triage or after a fix lands.
+3. If a bot README/history PR exists and the failure should be published as
+   current compatibility state, merge the PR after review.
+4. For setup-level failures or early build failures with no bot PR, triage
+   directly from the logs and rerun or fix as needed.
+5. Close the notification issue manually after triage or after a fix lands.
 
 Green follow-up runs do not auto-close the issue. A maintainer should close it
 after deciding the failure is resolved or no longer actionable.
