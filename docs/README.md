@@ -1,3 +1,5 @@
-# Placeholder
+# Contributor docs
 
-Step-by-step contributor docs land in Burst 3.2 (see `docs/adding-a-new-os.md`).
+Step-by-step guides for maintaining the community distro compatibility matrix.
+
+- [Adding a new OS](adding-a-new-os.md)
