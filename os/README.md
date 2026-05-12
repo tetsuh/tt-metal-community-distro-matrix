@@ -14,7 +14,7 @@ os/
         └── Dockerfile        # builds the base image for that release
 ```
 
-`<distro>` uses lowercase, hyphen-free names (`linuxmint`, `ubuntu`, `rockylinux`,
+`<distro>` uses lowercase, hyphen-free names (`linuxmint`, `ubuntu`, `rocky`,
 `debian`, ...). `<version>` is the upstream marketing version (`22.2`, `26.04`, `9`, ...).
 This layout is intentionally flat so that a glob like `os/*/*/Dockerfile` enumerates the
 full matrix.
@@ -23,18 +23,24 @@ full matrix.
 
 | Distribution | Codename | Base image |
 |---|---|---|
+| Linux Mint 22.3 | Zena | `ubuntu:24.04` (noble) |
 | Linux Mint 22.2 | Zara   | `ubuntu:24.04` (noble) |
 | Linux Mint 22.1 | Xia    | `ubuntu:24.04` (noble) |
 | Linux Mint 21.3 | Virginia | `ubuntu:22.04` (jammy) |
-
-Pending Burst 2: Ubuntu 26.04, Rocky Linux 9, plus one of Rocky 10 / Debian 12.
+| Ubuntu 26.04 | Resolute Raccoon | `ubuntu:26.04` |
+| Debian 13 | Trixie | `debian:13` |
+| Debian 12 | Bookworm | `debian:12` |
+| Rocky Linux 10 | - | `quay.io/rockylinux/rockylinux:10` |
+| Rocky Linux 9 | - | `quay.io/rockylinux/rockylinux:9` |
 
 ## Adding a new release
 
-A formal contribution guide lands in Burst 3.2 (`docs/adding-a-new-os.md`). Until then the
-shortcut is:
+See [`docs/adding-a-new-os.md`](../docs/adding-a-new-os.md) for the full
+workflow. In short:
 
-1. Pick the closest existing Dockerfile (e.g. another Mint release) and copy it to
+1. Pick the closest existing Dockerfile and copy it to
    `os/<distro>/<version>/Dockerfile`.
-2. Update the `ARG` values, base image, and any keyring/repo URLs.
-3. Open a PR. The matrix workflow will pick the new directory up automatically.
+2. Update the base image and bootstrap packages.
+3. Wire the target into `.github/workflows/build-tt-metal.yaml` and
+   `scripts/update_compat_table.py`.
+4. Add build or installer patches only when the vanilla upstream flow fails.

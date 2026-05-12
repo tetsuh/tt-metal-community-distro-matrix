@@ -98,11 +98,13 @@ Patches in this repository are kept as standalone `git format-patch` files so th
 │       ├── 9/Dockerfile
 │       └── 10/Dockerfile
 ├── history/              # per-run JSON snapshots from scheduled / full-matrix runs
-├── docs/                 # contributor docs (populated from Burst 3.2)
+├── docs/                 # contributor docs
 └── .github/workflows/    # CI definitions (populated from Burst 1.2)
 ```
 
-See [`os/README.md`](./os/README.md) for the conventions used in distribution directories.
+See [`os/README.md`](./os/README.md) for the conventions used in distribution
+directories, and [`docs/adding-a-new-os.md`](./docs/adding-a-new-os.md) for the
+step-by-step onboarding guide.
 
 ## How it works
 
