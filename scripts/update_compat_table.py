@@ -244,14 +244,17 @@ def updated_history_index(by_os: dict[str, dict], history_dir: Path,
 
 
 def write_history(by_os: dict[str, dict], history_dir: Path,
-                  recorded_at: str) -> dict:
+                  recorded_at: str,
+                  prepared: tuple[str, dict] | None = None) -> dict:
     """Persist raw per-run status JSON plus compact latest/index files."""
     results = ordered_results(by_os)
     if not results:
         print("history unchanged: no OS results found")
         return read_history_index(history_dir / "index.json")
 
-    run_dir, index = updated_history_index(by_os, history_dir, recorded_at)
+    run_dir, index = prepared or updated_history_index(
+        by_os, history_dir, recorded_at
+    )
     run_path = history_dir / run_dir
 
     for os_id, data in results:
@@ -403,7 +406,7 @@ def render_history_svg(index: dict) -> str:
 
     lines = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
-        'viewBox="0 0 {0} {1}" role="img" aria-labelledby="title desc">'.format(width, height),
+        f'viewBox="0 0 {width} {height}" role="img" aria-labelledby="title desc">',
         '<title id="title">Compatibility history</title>',
         '<desc id="desc">Recent full-matrix patched build and installer outcomes.</desc>',
         '<rect width="100%" height="100%" fill="#ffffff" rx="8"/>',
@@ -709,11 +712,13 @@ def main() -> int:
         .isoformat()
         .replace("+00:00", "Z")
     )
+    history_update: tuple[str, dict] | None = None
     history_index: dict | None = None
     if args.history_dir:
-        _, history_index = updated_history_index(
+        history_update = updated_history_index(
             by_os, args.history_dir, recorded_at
         )
+        history_index = history_update[1]
 
     body = render(by_os)
     install_body = render_install(by_os)
@@ -744,7 +749,9 @@ def main() -> int:
     if old != new:
         args.readme.write_text(new, encoding="utf-8")
     if args.history_dir:
-        history_index = write_history(by_os, args.history_dir, recorded_at)
+        history_index = write_history(
+            by_os, args.history_dir, recorded_at, history_update
+        )
         write_history_svg(history_index or {}, args.history_dir / HISTORY_SVG_NAME)
     print(f"processed {len(by_os)} OS result(s); README {'updated' if old != new else 'unchanged'}")
     return 0
