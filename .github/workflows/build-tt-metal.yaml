@@ -444,7 +444,7 @@ jobs:
               set -eux
               git config --global --add safe.directory "*"
               ./install_dependencies.sh --docker
-              /workspace/scripts/ttsim-smoke.sh /workspace/tt-metal
+              bash /workspace/scripts/ttsim-smoke.sh /workspace/tt-metal
             ' 2>&1 | tee logs/runtime.log
           runtime_rc=${PIPESTATUS[0]}
           set -e
