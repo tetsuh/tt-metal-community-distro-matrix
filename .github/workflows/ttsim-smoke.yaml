@@ -83,7 +83,7 @@ jobs:
 
       - name: Upload ttsim smoke report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ttsim-smoke-report-${{ matrix.smoke.id }}
           path: tt-metal/tt_metal/tt-llk/tests/python_tests/ttsim_results/
