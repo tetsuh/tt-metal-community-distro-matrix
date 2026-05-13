@@ -61,6 +61,7 @@ FAILURE_STAGE_LABELS = {
     "build": "build",
     "verify": "verify",
     "install": "install",
+    "runtime": "runtime",
     "workflow": "workflow",
 }
 
@@ -83,6 +84,9 @@ HISTORY_INDEX_LIMIT = 100
 HISTORY_RECENT_LIMIT = 5
 HISTORY_SVG_LIMIT = 12
 HISTORY_SVG_NAME = "compatibility-history.svg"
+RUNTIME_SMOKE_TARGET_SUBSTRING = "risc_compute"
+RUNTIME_SMOKE_TARGET_LABEL = "risc-compute"
+RUNTIME_SMOKE_TARGET_SUFFIX = f" (`{RUNTIME_SMOKE_TARGET_LABEL}`)"
 
 
 def collect(artifacts_dir: Path) -> dict[str, dict]:
@@ -167,6 +171,9 @@ def history_summary(data: dict) -> dict:
         ),
         "install_status_patched": data.get("install_status_patched", "na"),
         "install_patch_count": data.get("install_patch_count", 0),
+        "runtime_status": data.get("runtime_status", "na"),
+        "runtime_failure_stage": data.get("runtime_failure_stage", "na"),
+        "runtime_smoke_target": data.get("runtime_smoke_target", ""),
     }
 
 
@@ -347,6 +354,11 @@ def history_run_metrics(run: dict) -> dict:
     ]
     build = count_statuses(build_statuses)
     install = count_statuses(install_statuses)
+    runtime_statuses = [
+        str(target.get("runtime_status") or "na").lower()
+        for target in target_dicts
+    ]
+    runtime = count_statuses(runtime_statuses)
 
     failures: list[str] = []
     for target, status in zip(target_dicts, build_statuses):
@@ -357,6 +369,11 @@ def history_run_metrics(run: dict) -> dict:
     for target, status in zip(target_dicts, install_statuses):
         if status not in {"", "na", "success"}:
             failures.append(f"{target_display_name(target)} install")
+    for target, status in zip(target_dicts, runtime_statuses):
+        if status not in {"", "na", "success"}:
+            stage = str(target.get("runtime_failure_stage") or "").lower()
+            suffix = f" ({stage})" if stage and stage != "na" else ""
+            failures.append(f"{target_display_name(target)} runtime{suffix}")
 
     return {
         "build_success": build[0],
@@ -365,6 +382,9 @@ def history_run_metrics(run: dict) -> dict:
         "install_success": install[0],
         "install_known": install[1],
         "install_unknown": install[2],
+        "runtime_success": runtime[0],
+        "runtime_known": runtime[1],
+        "runtime_unknown": runtime[2],
         "failures": failures,
     }
 
@@ -401,19 +421,20 @@ def render_history_svg(index: dict) -> str:
     right = 20
     top = 52
     width = max(520, left + right + max(1, len(runs)) * (cell + gap))
-    height = 142
+    height = 174
     latest = runs[-1].get("recorded_at", "") if runs else ""
 
     lines = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
         f'viewBox="0 0 {width} {height}" role="img" aria-labelledby="title desc">',
         '<title id="title">Compatibility history</title>',
-        '<desc id="desc">Recent full-matrix patched build and installer outcomes.</desc>',
+        '<desc id="desc">Recent full-matrix patched build, installer, and runtime outcomes.</desc>',
         '<rect width="100%" height="100%" fill="#ffffff" rx="8"/>',
         svg_text(12, 22, "Compatibility history", size=14, weight="600"),
         svg_text(12, 40, f"Latest: {latest[:10] or 'n/a'}", size=11, fill="#57606a"),
         svg_text(12, top + 17, "Build", size=12, weight="600"),
         svg_text(12, top + 49, "Installer", size=12, weight="600"),
+        svg_text(12, top + 81, "Runtime", size=12, weight="600"),
     ]
 
     if not runs:
@@ -429,6 +450,9 @@ def render_history_svg(index: dict) -> str:
         install_title = (
             f"installer {metrics['install_success']}/{metrics['install_known']}"
         )
+        runtime_title = (
+            f"runtime {metrics['runtime_success']}/{metrics['runtime_known']}"
+        )
         lines.extend([
             svg_text(x + cell // 2, top - 6, date, size=10, anchor="middle", fill="#57606a"),
             f'<rect x="{x}" y="{top}" width="{cell}" height="{cell}" rx="4" '
@@ -437,6 +461,9 @@ def render_history_svg(index: dict) -> str:
             f'<rect x="{x}" y="{top + 32}" width="{cell}" height="{cell}" rx="4" '
             f'fill="{trend_color(metrics["install_success"], metrics["install_known"], metrics["install_unknown"])}">'
             f'<title>{html.escape(run_id + " " + install_title)}</title></rect>',
+            f'<rect x="{x}" y="{top + 64}" width="{cell}" height="{cell}" rx="4" '
+            f'fill="{trend_color(metrics["runtime_success"], metrics["runtime_known"], metrics["runtime_unknown"])}">'
+            f'<title>{html.escape(run_id + " " + runtime_title)}</title></rect>',
         ])
 
     lines.extend([
@@ -463,11 +490,11 @@ def render_history_summary(index: dict) -> str:
         "",
         f"![Compatibility history](history/{HISTORY_SVG_NAME})",
         "",
-        "| Run | Recorded | tt-metal | Patched build | Installer | Notable failures |",
-        "|---|---|---|---:|---:|---|",
+        "| Run | Recorded | tt-metal | Patched build | Installer | Runtime ttsim | Notable failures |",
+        "|---|---|---|---:|---:|---:|---|",
     ]
     if not runs:
-        lines.append("| — | — | — | — | — | No history yet |")
+        lines.append("| — | — | — | — | — | — | No history yet |")
         return "\n".join(lines)
 
     for run in runs:
@@ -492,6 +519,7 @@ def render_history_summary(index: dict) -> str:
             f"| {run_cell} | {recorded} | {tested} | "
             f"{format_ratio(metrics['build_success'], metrics['build_known'], metrics['build_unknown'])} | "
             f"{format_ratio(metrics['install_success'], metrics['install_known'], metrics['install_unknown'])} | "
+            f"{format_ratio(metrics['runtime_success'], metrics['runtime_known'], metrics['runtime_unknown'])} | "
             f"{failure_cell} |"
         )
     return "\n".join(lines)
@@ -555,8 +583,8 @@ def render(by_os: dict[str, dict]) -> str:
     lines.append(f"**Last updated:** {ts}")
     lines.append(f"**Tested tt-metal:** {tested}")
     lines.append("")
-    lines.append("| Distribution | Vanilla | With patches | Logs |")
-    lines.append("|---|:-:|:-:|---|")
+    lines.append("| Distribution | Vanilla | With patches | Runtime ttsim | Logs |")
+    lines.append("|---|:-:|:-:|:-:|---|")
     known_oses = {os_id for os_id, _ in ROW_ORDER}
     for os_id in by_os:
         if os_id not in known_oses:
@@ -599,11 +627,26 @@ def render(by_os: dict[str, dict]) -> str:
                 patched_cell = (
                     f"{patched_emoji} ([{patch_count} {noun}]({patches_dir}/))"
                 )
+            runtime_status = str(data.get("runtime_status") or "na").lower()
+            runtime_target = str(data.get("runtime_smoke_target") or "")
+            if runtime_status == "na":
+                runtime_cell = "—"
+            else:
+                target_suffix = (
+                    RUNTIME_SMOKE_TARGET_SUFFIX
+                    if RUNTIME_SMOKE_TARGET_SUBSTRING in runtime_target
+                    else ""
+                )
+                runtime_cell = status_cell(runtime_status, "runtime") + target_suffix
         else:
             vanilla_cell = "⏳"
             patched_cell = "⏳"
+            runtime_cell = "⏳"
             log_cell = "—"
-        lines.append(f"| {name} | {vanilla_cell} | {patched_cell} | {log_cell} |")
+        lines.append(
+            f"| {name} | {vanilla_cell} | {patched_cell} | "
+            f"{runtime_cell} | {log_cell} |"
+        )
     return "\n".join(lines)
 
 
