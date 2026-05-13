@@ -3,7 +3,7 @@
 <desc id="desc">Recent full-matrix patched build, installer, and runtime outcomes.</desc>
 <rect width="100%" height="100%" fill="#ffffff" rx="8"/>
 <text x="12" y="22" font-size="14" font-weight="600" text-anchor="start" fill="#24292f">Compatibility history</text>
-<text x="12" y="40" font-size="11" font-weight="400" text-anchor="start" fill="#57606a">Latest: 2026-05-10</text>
+<text x="12" y="40" font-size="11" font-weight="400" text-anchor="start" fill="#57606a">Latest: 2026-05-13</text>
 <text x="12" y="69" font-size="12" font-weight="600" text-anchor="start" fill="#24292f">Build</text>
 <text x="12" y="101" font-size="12" font-weight="600" text-anchor="start" fill="#24292f">Installer</text>
 <text x="12" y="133" font-size="12" font-weight="600" text-anchor="start" fill="#24292f">Runtime</text>
@@ -15,5 +15,9 @@
 <rect x="118" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>25636587988 build 9/9</title></rect>
 <rect x="118" y="84" width="24" height="24" rx="4" fill="#cf222e"><title>25636587988 installer 8/9</title></rect>
 <rect x="118" y="116" width="24" height="24" rx="4" fill="#6e7781"><title>25636587988 runtime 0/0</title></rect>
+<text x="162" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">05-13</text>
+<rect x="150" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>25814717283 build 9/9</title></rect>
+<rect x="150" y="84" width="24" height="24" rx="4" fill="#cf222e"><title>25814717283 installer 8/9</title></rect>
+<rect x="150" y="116" width="24" height="24" rx="4" fill="#cf222e"><title>25814717283 runtime 0/9</title></rect>
 <text x="12" y="158" font-size="10" font-weight="400" text-anchor="start" fill="#57606a">green: all known pass; red: at least one failure; amber: pass with unknowns</text>
 </svg>
