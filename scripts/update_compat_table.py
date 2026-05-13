@@ -174,6 +174,8 @@ def history_summary(data: dict) -> dict:
         "runtime_status": data.get("runtime_status", "na"),
         "runtime_failure_stage": data.get("runtime_failure_stage", "na"),
         "runtime_smoke_target": data.get("runtime_smoke_target", ""),
+        "runtime_skip_reason": data.get("runtime_skip_reason", ""),
+        "runtime_python_version": data.get("runtime_python_version", ""),
     }
 
 
@@ -629,8 +631,14 @@ def render(by_os: dict[str, dict]) -> str:
                 )
             runtime_status = str(data.get("runtime_status") or "na").lower()
             runtime_target = str(data.get("runtime_smoke_target") or "")
+            runtime_skip_reason = str(data.get("runtime_skip_reason") or "")
+            runtime_python_version = str(data.get("runtime_python_version") or "")
             if runtime_status == "na":
-                runtime_cell = "—"
+                if runtime_skip_reason == "python-3.10-required":
+                    version = f" {runtime_python_version}" if runtime_python_version else ""
+                    runtime_cell = f"— (Python{version} != 3.10)"
+                else:
+                    runtime_cell = "—"
             else:
                 target_suffix = (
                     RUNTIME_SMOKE_TARGET_SUFFIX

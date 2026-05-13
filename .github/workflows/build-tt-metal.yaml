@@ -443,14 +443,28 @@ jobs:
             bash -lc '
               set -eux
               git config --global --add safe.directory "*"
+              python_version="$(python3 -c "import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")")"
+              echo "__TTMCDM_RUNTIME_PYTHON_VERSION=${python_version}"
+              if [ "${python_version}" != "3.10" ]; then
+                echo "__TTMCDM_RUNTIME_STATUS=na"
+                echo "__TTMCDM_RUNTIME_SKIP_REASON=python-3.10-required"
+                exit 0
+              fi
               ./install_dependencies.sh --docker
               bash /workspace/scripts/ttsim-smoke.sh /workspace/tt-metal
             ' 2>&1 | tee logs/runtime.log
           runtime_rc=${PIPESTATUS[0]}
           set -e
           echo "__TTMCDM_RUNTIME_RC=${runtime_rc}" | tee -a logs/runtime.log
+          runtime_marker_status="$(sed -n 's/^__TTMCDM_RUNTIME_STATUS=//p' logs/runtime.log | tail -n1)"
+          runtime_skip_reason="$(sed -n 's/^__TTMCDM_RUNTIME_SKIP_REASON=//p' logs/runtime.log | tail -n1)"
+          runtime_python_version="$(sed -n 's/^__TTMCDM_RUNTIME_PYTHON_VERSION=//p' logs/runtime.log | tail -n1)"
           runtime_status="failure"
-          if [ "${runtime_rc}" -eq 0 ]; then
+          if [ "${runtime_marker_status}" = "na" ]; then
+            runtime_status="na"
+            runtime_rc=""
+            echo "::notice::experimental ttsim runtime smoke skipped (${runtime_skip_reason})"
+          elif [ "${runtime_rc}" -eq 0 ]; then
             runtime_status="success"
           else
             echo "::warning::experimental ttsim runtime smoke failed (rc=${runtime_rc})"
@@ -460,6 +474,8 @@ jobs:
           echo "runtime_status=${runtime_status}" >> "$GITHUB_OUTPUT"
           echo "runtime_rc=${runtime_rc}" >> "$GITHUB_OUTPUT"
           echo "runtime_target=${TTSIM_TEST_TARGET}" >> "$GITHUB_OUTPUT"
+          echo "runtime_skip_reason=${runtime_skip_reason}" >> "$GITHUB_OUTPUT"
+          echo "runtime_python_version=${runtime_python_version}" >> "$GITHUB_OUTPUT"
           echo "::endgroup::"
 
       - name: Write status JSON
@@ -492,6 +508,8 @@ jobs:
           runtime_status="${{ steps.runtime-smoke.outputs.runtime_status }}"
           runtime_rc="${{ steps.runtime-smoke.outputs.runtime_rc }}"
           runtime_target="${{ steps.runtime-smoke.outputs.runtime_target }}"
+          runtime_skip_reason="${{ steps.runtime-smoke.outputs.runtime_skip_reason }}"
+          runtime_python_version="${{ steps.runtime-smoke.outputs.runtime_python_version }}"
 
           # Defaults if the build step did not run far enough to set
           # outputs (e.g. checkout failed).
@@ -511,6 +529,8 @@ jobs:
           install_patch_count="${install_patch_count:-0}"
           runtime_status="${runtime_status:-na}"
           runtime_target="${runtime_target:-test_risc_compute.py::test_risc_compute}"
+          runtime_skip_reason="${runtime_skip_reason:-}"
+          runtime_python_version="${runtime_python_version:-}"
           runtime_failure_stage="na"
           if [ "${runtime_status}" = "failure" ]; then
             runtime_failure_stage="runtime"
@@ -581,6 +601,8 @@ jobs:
             "runtime_smoke_target":         "${runtime_target}",
             "runtime_smoke_architecture":   "blackhole",
             "runtime_smoke_rc":             ${runtime_rc_json},
+            "runtime_skip_reason":          "${runtime_skip_reason}",
+            "runtime_python_version":       "${runtime_python_version}",
             "install_status":        "${legacy_install_status}",
             "install_repo_present":  ${legacy_install_repo_present_json},
             "install_repo_files":    "${legacy_install_repo_files}",
