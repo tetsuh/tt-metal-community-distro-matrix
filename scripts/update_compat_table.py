@@ -528,6 +528,7 @@ def first_failed_stage(data: dict) -> str:
 def render(by_os: dict[str, dict]) -> str:
     sha = ""
     ref = ""
+    repo = ""
     for data in by_os.values():
         val_sha = data.get("tt_metal_sha")
         if not sha and val_sha:
@@ -535,17 +536,24 @@ def render(by_os: dict[str, dict]) -> str:
         val_ref = data.get("tt_metal_ref")
         if not ref and val_ref:
             ref = str(val_ref)
-        if sha and ref:
+        val_repo = data.get("tt_metal_repo")
+        if not repo and val_repo:
+            repo = str(val_repo)
+        if sha and ref and repo:
             break
     sha_short = sha[:7] if sha else "<sha>"
     ref = ref or "main"
+    repo = repo or "tenstorrent/tt-metal"
+    tested = f"`{ref}@{sha_short}`"
+    if sha:
+        tested = f"[{tested}](https://github.com/{repo}/commit/{sha})"
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     lines: list[str] = []
     lines.append(HEADER_NOTE)
     lines.append("")
     lines.append(f"**Last updated:** {ts}")
-    lines.append(f"**Tested tt-metal:** `{ref}@{sha_short}`")
+    lines.append(f"**Tested tt-metal:** {tested}")
     lines.append("")
     lines.append("| Distribution | Vanilla | With patches | Logs |")
     lines.append("|---|:-:|:-:|---|")

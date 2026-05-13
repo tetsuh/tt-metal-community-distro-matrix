@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Upstream tt-metal issues
+    url: https://github.com/tenstorrent/tt-metal/issues
+    about: Use this for upstream tt-metal bugs, hardware behavior, driver issues, or general product support.
+  - name: Upstream tt-installer issues
+    url: https://github.com/tenstorrent/tt-installer/issues
+    about: Use this for upstream installer bugs or support requests not specific to this matrix.

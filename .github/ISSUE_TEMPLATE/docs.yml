@@ -1,0 +1,22 @@
+name: Documentation correction
+description: Report unclear or stale documentation.
+title: "[docs] <summary>"
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page or section
+      placeholder: docs/adding-a-new-os.md
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is unclear or stale?
+    validations:
+      required: true
+  - type: textarea
+    id: suggested
+    attributes:
+      label: Suggested correction
+      description: Optional, but helpful.
