@@ -406,6 +406,62 @@ jobs:
             logs/install-patched.log \
             "${INSTALLER_VERSION}"
 
+      - name: Cache matrix ttsim artifacts
+        if: steps.artifacts.outcome == 'success'
+        uses: actions/cache@v5
+        with:
+          path: |
+            ttsim-cache
+            tt-metal/tt_metal/tt-llk/tests/sfpi
+          key: ${{ runner.os }}-${{ matrix.target_os }}-ttsim-matrix-${{ hashFiles('tt-metal/tt_metal/tt-llk/tests/ttsim-version', 'tt-metal/tt_metal/tt-llk/tests/sfpi-version') }}
+
+      - name: Run ttsim runtime smoke (experimental)
+        id: runtime-smoke
+        if: steps.artifacts.outcome == 'success'
+        continue-on-error: true
+        env:
+          IMAGE_TAG: ${{ steps.os.outputs.image_tag }}
+          TARGET_OS: ${{ matrix.target_os }}
+          TTSIM_TEST_TARGET: test_risc_compute.py::test_risc_compute
+        run: |
+          set -u
+          mkdir -p logs ttsim-cache
+          echo "::group::Experimental ttsim runtime smoke"
+          set +e
+          docker run --rm \
+            -v "${PWD}/tt-metal:/workspace/tt-metal" \
+            -v "${PWD}/scripts:/workspace/scripts:ro" \
+            -v "${PWD}/ttsim-cache:/workspace/ttsim-cache" \
+            -w /workspace/tt-metal \
+            -e TT_METAL_HOME=/workspace/tt-metal \
+            -e TTSIM_CACHE_DIR=/workspace/ttsim-cache \
+            -e TTSIM_ARCHITECTURE=blackhole \
+            -e TTSIM_TIMEOUT_SECONDS=300 \
+            -e TTSIM_TEST_TARGET="${TTSIM_TEST_TARGET}" \
+            -e TTSIM_REPORT_NAME="ttsim-matrix-${TARGET_OS}" \
+            "${IMAGE_TAG}" \
+            bash -lc '
+              set -eux
+              git config --global --add safe.directory "*"
+              ./install_dependencies.sh --docker
+              /workspace/scripts/ttsim-smoke.sh /workspace/tt-metal
+            ' 2>&1 | tee logs/runtime.log
+          runtime_rc=${PIPESTATUS[0]}
+          set -e
+          echo "__TTMCDM_RUNTIME_RC=${runtime_rc}" | tee -a logs/runtime.log
+          runtime_status="failure"
+          if [ "${runtime_rc}" -eq 0 ]; then
+            runtime_status="success"
+          else
+            echo "::warning::experimental ttsim runtime smoke failed (rc=${runtime_rc})"
+          fi
+          mkdir -p logs/ttsim-results
+          cp -a tt-metal/tt_metal/tt-llk/tests/python_tests/ttsim_results/. logs/ttsim-results/ 2>/dev/null || true
+          echo "runtime_status=${runtime_status}" >> "$GITHUB_OUTPUT"
+          echo "runtime_rc=${runtime_rc}" >> "$GITHUB_OUTPUT"
+          echo "runtime_target=${TTSIM_TEST_TARGET}" >> "$GITHUB_OUTPUT"
+          echo "::endgroup::"
+
       - name: Write status JSON
         if: always()
         run: |
@@ -433,6 +489,9 @@ jobs:
           install_patch_dir="${{ steps.install-prep.outputs.patch_dir }}"
           argbash_version="${{ steps.install-prep.outputs.argbash_version }}"
           installer_version="${{ env.TT_INSTALLER_VERSION }}"
+          runtime_status="${{ steps.runtime-smoke.outputs.runtime_status }}"
+          runtime_rc="${{ steps.runtime-smoke.outputs.runtime_rc }}"
+          runtime_target="${{ steps.runtime-smoke.outputs.runtime_target }}"
 
           # Defaults if the build step did not run far enough to set
           # outputs (e.g. checkout failed).
@@ -450,6 +509,12 @@ jobs:
           install_status_vanilla="${install_status_vanilla:-na}"
           install_status_patched="${install_status_patched:-na}"
           install_patch_count="${install_patch_count:-0}"
+          runtime_status="${runtime_status:-na}"
+          runtime_target="${runtime_target:-test_risc_compute.py::test_risc_compute}"
+          runtime_failure_stage="na"
+          if [ "${runtime_status}" = "failure" ]; then
+            runtime_failure_stage="runtime"
+          fi
 
           json_bool_or_null() {
             case "$1" in
@@ -470,6 +535,7 @@ jobs:
           irp_p_json=$(json_bool_or_null "${install_repo_present_patched}")
           rc_v_json=$(json_int_or_null "${install_rc_vanilla}")
           rc_p_json=$(json_int_or_null "${install_rc_patched}")
+          runtime_rc_json=$(json_int_or_null "${runtime_rc}")
 
           # Backward-compat aliases (one cycle): mirror the vanilla
           # leg into the legacy install_* keys so existing artifacts
@@ -510,6 +576,11 @@ jobs:
             "install_patch_dir":            "${install_patch_dir}",
             "argbash_version":              "${argbash_version}",
             "installer_version":            "${installer_version}",
+            "runtime_status":               "${runtime_status}",
+            "runtime_failure_stage":        "${runtime_failure_stage}",
+            "runtime_smoke_target":         "${runtime_target}",
+            "runtime_smoke_architecture":   "blackhole",
+            "runtime_smoke_rc":             ${runtime_rc_json},
             "install_status":        "${legacy_install_status}",
             "install_repo_present":  ${legacy_install_repo_present_json},
             "install_repo_files":    "${legacy_install_repo_files}",

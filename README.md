@@ -12,17 +12,17 @@ A compatibility guardrail that continuously monitors whether [tt-metal](https://
 **Last updated:** 2026-05-12 22:16 UTC
 **Tested tt-metal:** [`main@3f39ff3`](https://github.com/tenstorrent/tt-metal/commit/3f39ff3267cd48366885084aa9027f3cf556b2d4)
 
-| Distribution | Vanilla | With patches | Logs |
-|---|:-:|:-:|---|
-| Linux Mint 22.3 | ✅ | ✅ ([1 patch](patches/linuxmint/)) | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
-| Linux Mint 22.2 | ✅ | ✅ ([1 patch](patches/linuxmint/)) | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
-| Linux Mint 22.1 | ✅ | ✅ ([1 patch](patches/linuxmint/)) | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
-| Linux Mint 21.3 | ✅ | ✅ ([1 patch](patches/linuxmint/)) | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
-| Ubuntu 26.04 | ❌(deps) | ✅ ([3 patches](patches/ubuntu/)) | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
-| Debian 13 | ❌(deps) | ✅ ([5 patches](patches/debian/)) | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
-| Debian 12 | ❌(deps) | ✅ ([5 patches](patches/debian/)) | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
-| Rocky Linux 10 | ✅ | ✅ (no patches) | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
-| Rocky Linux 9 | ✅ | ✅ (no patches) | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
+| Distribution | Vanilla | With patches | Runtime ttsim | Logs |
+|---|:-:|:-:|:-:|---|
+| Linux Mint 22.3 | ✅ | ✅ ([1 patch](patches/linuxmint/)) | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
+| Linux Mint 22.2 | ✅ | ✅ ([1 patch](patches/linuxmint/)) | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
+| Linux Mint 22.1 | ✅ | ✅ ([1 patch](patches/linuxmint/)) | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
+| Linux Mint 21.3 | ✅ | ✅ ([1 patch](patches/linuxmint/)) | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
+| Ubuntu 26.04 | ❌(deps) | ✅ ([3 patches](patches/ubuntu/)) | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
+| Debian 13 | ❌(deps) | ✅ ([5 patches](patches/debian/)) | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
+| Debian 12 | ❌(deps) | ✅ ([5 patches](patches/debian/)) | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
+| Rocky Linux 10 | ✅ | ✅ (no patches) | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
+| Rocky Linux 9 | ✅ | ✅ (no patches) | — | [run](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) |
 <!-- COMPAT_TABLE_END -->
 
 ### tt-installer verification (install phase)
@@ -51,7 +51,7 @@ The build pipeline above only exercises the deps/build path of `tt-metal` itself
 
 This repository also provides a small [`ttsim`](https://github.com/tenstorrent/ttsim) smoke workflow for hardwareless execution coverage. It runs a pair of LLK smoke lanes on a reference Ubuntu 22.04 host, using the simulator version pinned by the checked-out tt-metal tree.
 
-This check is intentionally separate from the distribution matrix above: it verifies that a minimal simulator-backed workload can execute without Tenstorrent hardware, but it is not a per-distro compatibility result and is not a substitute for validation on physical devices.
+The standalone workflow remains the canonical smoke because it runs on a known-good Ubuntu 22.04 reference host. The distribution matrix also records an experimental, non-gating `risc-compute` ttsim runtime signal after a successful patched build; this is useful for spotting per-distro runtime drift, but failures in that column do not mask the build or install results and are not a substitute for validation on physical devices.
 
 ### Legend
 
@@ -126,17 +126,17 @@ for the deduplication and triage policy.
 
 ## History
 
-Scheduled and full-matrix manual runs persist raw status snapshots under [`history/runs/<run_id>/`](./history/runs/). Each OS gets one JSON file with the same fields uploaded as the workflow artifact, including phase-aware build and install status. [`history/latest.json`](./history/latest.json) points at the newest recorded run, and [`history/index.json`](./history/index.json) keeps a compact run list for future visualization.
+Scheduled and full-matrix manual runs persist raw status snapshots under [`history/runs/<run_id>/`](./history/runs/). Each OS gets one JSON file with the same fields uploaded as the workflow artifact, including phase-aware build, install, and experimental runtime status. [`history/latest.json`](./history/latest.json) points at the newest recorded run, and [`history/index.json`](./history/index.json) keeps a compact run list for future visualization.
 
 <!-- HISTORY_SUMMARY_START -->
 *Auto-generated from `history/index.json`.*
 
 ![Compatibility history](history/compatibility-history.svg)
 
-| Run | Recorded | tt-metal | Patched build | Installer | Notable failures |
-|---|---|---|---:|---:|---|
-| [25636587988](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) | 2026-05-10 | `main@3f39ff3` | 9/9 | 8/9 | Debian 12 install |
-| [25433729633](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25433729633) | 2026-05-06 | `main@a215b12` | 9/9 | 8/9 | Debian 12 install |
+| Run | Recorded | tt-metal | Patched build | Installer | Runtime ttsim | Notable failures |
+|---|---|---|---:|---:|---:|---|
+| [25636587988](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25636587988) | 2026-05-10 | `main@3f39ff3` | 9/9 | 8/9 | — (9 unknown) | Debian 12 install |
+| [25433729633](https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/25433729633) | 2026-05-06 | `main@a215b12` | 9/9 | 8/9 | — (9 unknown) | Debian 12 install |
 <!-- HISTORY_SUMMARY_END -->
 
 ## Planned distributions
