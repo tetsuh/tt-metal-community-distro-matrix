@@ -84,6 +84,9 @@ HISTORY_INDEX_LIMIT = 100
 HISTORY_RECENT_LIMIT = 5
 HISTORY_SVG_LIMIT = 12
 HISTORY_SVG_NAME = "compatibility-history.svg"
+RUNTIME_SMOKE_TARGET_SUBSTRING = "risc_compute"
+RUNTIME_SMOKE_TARGET_LABEL = "risc-compute"
+RUNTIME_SMOKE_TARGET_SUFFIX = f" (`{RUNTIME_SMOKE_TARGET_LABEL}`)"
 
 
 def collect(artifacts_dir: Path) -> dict[str, dict]:
@@ -368,7 +371,9 @@ def history_run_metrics(run: dict) -> dict:
             failures.append(f"{target_display_name(target)} install")
     for target, status in zip(target_dicts, runtime_statuses):
         if status not in {"", "na", "success"}:
-            failures.append(f"{target_display_name(target)} runtime")
+            stage = str(target.get("runtime_failure_stage") or "").lower()
+            suffix = f" ({stage})" if stage and stage != "na" else ""
+            failures.append(f"{target_display_name(target)} runtime{suffix}")
 
     return {
         "build_success": build[0],
@@ -627,7 +632,11 @@ def render(by_os: dict[str, dict]) -> str:
             if runtime_status == "na":
                 runtime_cell = "—"
             else:
-                target_suffix = " (`risc-compute`)" if "risc_compute" in runtime_target else ""
+                target_suffix = (
+                    RUNTIME_SMOKE_TARGET_SUFFIX
+                    if RUNTIME_SMOKE_TARGET_SUBSTRING in runtime_target
+                    else ""
+                )
                 runtime_cell = status_cell(runtime_status, "runtime") + target_suffix
         else:
             vanilla_cell = "⏳"
