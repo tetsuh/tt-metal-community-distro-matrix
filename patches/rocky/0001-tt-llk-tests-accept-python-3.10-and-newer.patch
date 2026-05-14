@@ -1,0 +1,48 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tetsuya Hayashi <tetsu.h@gmail.com>
+Date: Thu, 15 May 2026 08:32:00 +0900
+Subject: [PATCH] tt-llk tests: accept Python 3.10 and newer in external
+ env setup
+
+The LLK test environment bootstrap currently hard-stops unless the host
+interpreter string starts with `3.10`. That blocks the distro matrix
+runtime smoke on community distros whose default interpreter is newer
+than 3.10, even before the actual Python dependencies and simulator
+tests get a chance to run.
+
+Relax the check to require Python 3.10 or newer. This keeps older
+interpreters out while letting newer distro-default interpreters surface
+real compatibility failures (or successes), which is more actionable for
+upstreaming than a blanket preflight rejection.
+
+Upstream-Status: Pending
+Distro-Scope: rocky-9, rocky-10
+---
+ tt_metal/tt-llk/tests/setup_external_testing_env.sh | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/tt_metal/tt-llk/tests/setup_external_testing_env.sh b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
+index 4ea7e2b..2b4842a 100755
+--- a/tt_metal/tt-llk/tests/setup_external_testing_env.sh
++++ b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
+@@ -24,9 +24,17 @@ check_deps() {
+ # Check for supported Python version
+ check_python_version() {
+     PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2)
+-    if [[ "$PYTHON_VERSION" != "3.10"* ]]; then
+-        echo "Error: Only Python 3.10 is supported. Detected: $PYTHON_VERSION" >&2
++    PYTHON_MAJOR=$(printf '%s' "$PYTHON_VERSION" | cut -d. -f1)
++    PYTHON_MINOR=$(printf '%s' "$PYTHON_VERSION" | cut -d. -f2)
++    if ! [[ "$PYTHON_MAJOR" =~ ^[0-9]+$ && "$PYTHON_MINOR" =~ ^[0-9]+$ ]]; then
++        echo "Error: Unable to parse Python version: $PYTHON_VERSION" >&2
++        exit 1
++    fi
++    if (( PYTHON_MAJOR < 3 || (PYTHON_MAJOR == 3 && PYTHON_MINOR < 10) )); then
++        echo "Error: Python 3.10 or newer is required. Detected: $PYTHON_VERSION" >&2
+         exit 1
+     fi
+     echo "Supported Python version detected: $PYTHON_VERSION"
+ }
+-- 
+2.53.0.windows.2
+
