@@ -443,13 +443,18 @@ jobs:
             bash -lc '
               set -eux
               git config --global --add safe.directory "*"
+              if command -v apt-get >/dev/null 2>&1; then
+                apt-get update
+                DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                  python3 curl ca-certificates sudo
+              elif command -v dnf >/dev/null 2>&1; then
+                dnf install -y --allowerasing python3 curl ca-certificates sudo
+              else
+                echo "::error::no supported package manager (apt-get/dnf) found" >&2
+                exit 1
+              fi
               python_version="$(python3 -c "import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")")"
               echo "__TTMCDM_RUNTIME_PYTHON_VERSION=${python_version}"
-              if [ "${python_version}" != "3.10" ]; then
-                echo "__TTMCDM_RUNTIME_STATUS=na"
-                echo "__TTMCDM_RUNTIME_SKIP_REASON=python-3.10-required"
-                exit 0
-              fi
               ./install_dependencies.sh --docker
               bash /workspace/scripts/ttsim-smoke.sh /workspace/tt-metal
             ' 2>&1 | tee logs/runtime.log
@@ -463,6 +468,11 @@ jobs:
           if [ "${runtime_marker_status}" = "na" ]; then
             runtime_status="na"
             runtime_rc=""
+            echo "experimental ttsim runtime smoke skipped (${runtime_skip_reason})"
+          elif grep -q "Only Python 3.10 is supported" logs/runtime.log; then
+            runtime_status="na"
+            runtime_rc=""
+            runtime_skip_reason="python-3.10-required"
             echo "experimental ttsim runtime smoke skipped (${runtime_skip_reason})"
           elif [ "${runtime_rc}" -eq 0 ]; then
             runtime_status="success"
