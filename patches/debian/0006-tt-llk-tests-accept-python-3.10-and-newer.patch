@@ -18,14 +18,14 @@ upstreaming than a blanket preflight rejection.
 Upstream-Status: Pending
 Distro-Scope: debian-12, debian-13
 ---
- tt_metal/tt-llk/tests/setup_external_testing_env.sh | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+ tt_metal/tt-llk/tests/setup_external_testing_env.sh | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
 diff --git a/tt_metal/tt-llk/tests/setup_external_testing_env.sh b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
-index 4ea7e2b..2b4842a 100755
+index 4ea7e2b..743577f 100755
 --- a/tt_metal/tt-llk/tests/setup_external_testing_env.sh
 +++ b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
-@@ -24,9 +24,17 @@ check_deps() {
+@@ -31,8 +31,14 @@ check_deps() {
  # Check for supported Python version
  check_python_version() {
      PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2)
