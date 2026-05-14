@@ -463,7 +463,7 @@ jobs:
           if [ "${runtime_marker_status}" = "na" ]; then
             runtime_status="na"
             runtime_rc=""
-            echo "::notice::experimental ttsim runtime smoke skipped (${runtime_skip_reason})"
+            echo "experimental ttsim runtime smoke skipped (${runtime_skip_reason})"
           elif [ "${runtime_rc}" -eq 0 ]; then
             runtime_status="success"
           else
