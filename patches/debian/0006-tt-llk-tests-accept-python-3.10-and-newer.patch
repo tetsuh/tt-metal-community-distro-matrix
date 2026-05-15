@@ -53,7 +53,7 @@ index 4ea7e2b..8bf1d75 100755
 +    echo "Updating and installing system packages..."
 +    if command -v apt-get >/dev/null 2>&1; then
 +        sudo apt-get update
-+        sudo apt-get install -y curl cmake software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libzmq3-dev git-lfs xxd wget
++        sudo apt-get install -y curl cmake build-essential libyaml-cpp-dev libhwloc-dev libzmq3-dev git-lfs xxd wget
 +    elif command -v dnf >/dev/null 2>&1; then
 +        sudo dnf install -y curl cmake gcc-c++ make yaml-cpp-devel hwloc-devel zeromq-devel git-lfs vim-common wget
 +    elif command -v yum >/dev/null 2>&1; then
