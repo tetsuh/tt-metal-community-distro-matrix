@@ -23,5 +23,9 @@
 <rect x="182" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>25914715257 build 9/9</title></rect>
 <rect x="182" y="84" width="24" height="24" rx="4" fill="#cf222e"><title>25914715257 installer 8/9</title></rect>
 <rect x="182" y="116" width="24" height="24" rx="4" fill="#cf222e"><title>25914715257 runtime 8/9</title></rect>
+<text x="226" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">05-15</text>
+<rect x="214" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>25916683483 build 9/9</title></rect>
+<rect x="214" y="84" width="24" height="24" rx="4" fill="#cf222e"><title>25916683483 installer 8/9</title></rect>
+<rect x="214" y="116" width="24" height="24" rx="4" fill="#cf222e"><title>25916683483 runtime 8/9</title></rect>
 <text x="12" y="158" font-size="10" font-weight="400" text-anchor="start" fill="#57606a">green: all known pass; red: at least one failure; amber: pass with unknowns</text>
 </svg>
