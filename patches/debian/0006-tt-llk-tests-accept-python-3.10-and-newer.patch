@@ -1,31 +1,36 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Tetsuya Hayashi <tetsu.h@gmail.com>
 Date: Thu, 15 May 2026 08:32:00 +0900
-Subject: [PATCH] tt-llk tests: accept Python 3.10 and newer in external
- env setup
+Subject: [PATCH] tt-llk tests: accept Python 3.10+ and detect package
+ manager in external env setup
 
 The LLK test environment bootstrap currently hard-stops unless the host
-interpreter string starts with `3.10`. That blocks the distro matrix
-runtime smoke on community distros whose default interpreter is newer
-than 3.10, even before the actual Python dependencies and simulator
-tests get a chance to run.
+interpreter string starts with `3.10`, then unconditionally uses
+`sudo apt-get` for its system package install step. That blocks the
+distro matrix runtime smoke on two axes:
 
-Relax the check to require Python 3.10 or newer. This keeps older
-interpreters out while letting newer distro-default interpreters surface
-real compatibility failures (or successes), which is more actionable for
-upstreaming than a blanket preflight rejection.
+1. community distros with newer default Python interpreters are rejected
+   before the actual test dependencies and simulator tests get a chance
+   to run;
+2. Red Hat family distros reach the setup script but then fail because
+   `apt-get` is not available there.
+
+Relax the version gate to require Python 3.10 or newer, and detect the
+package manager before installing the setup prerequisites. This lets the
+matrix surface the real compatibility problems that remain beyond the
+preflight checks.
 
 Upstream-Status: Pending
 Distro-Scope: debian-12, debian-13
 ---
- tt_metal/tt-llk/tests/setup_external_testing_env.sh | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+ tt_metal/tt-llk/tests/setup_external_testing_env.sh | 29 ++++++++++++++++++++++++-----
+ 1 file changed, 24 insertions(+), 5 deletions(-)
 
 diff --git a/tt_metal/tt-llk/tests/setup_external_testing_env.sh b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
-index 4ea7e2b..743577f 100755
+index 4ea7e2b..8bf1d75 100755
 --- a/tt_metal/tt-llk/tests/setup_external_testing_env.sh
 +++ b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
-@@ -31,8 +31,14 @@ check_deps() {
+@@ -31,13 +31,34 @@ check_deps() {
  # Check for supported Python version
  check_python_version() {
      PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2)
@@ -43,6 +48,36 @@ index 4ea7e2b..743577f 100755
      fi
      echo "Supported Python version detected: $PYTHON_VERSION"
  }
+ 
++install_system_packages() {
++    echo "Updating and installing system packages..."
++    if command -v apt-get >/dev/null 2>&1; then
++        sudo apt-get update
++        sudo apt-get install -y curl cmake software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libzmq3-dev git-lfs xxd wget
++    elif command -v dnf >/dev/null 2>&1; then
++        sudo dnf install -y curl cmake gcc-c++ make yaml-cpp-devel hwloc-devel zeromq-devel git-lfs vim-common wget
++    elif command -v yum >/dev/null 2>&1; then
++        sudo yum install -y curl cmake gcc-c++ make yaml-cpp-devel hwloc-devel zeromq-devel git-lfs vim-common wget
++    else
++        echo "Error: No supported package manager found (apt-get/dnf/yum)." >&2
++        exit 1
++    fi
++}
++
+ # --- Main Script ---
+ 
+ # Parse arguments
+@@ -76,9 +97,7 @@ if [[ "$REUSE" == false || ! -d "$VENV_DIR" ]]; then
+     echo "Performing full setup..."
+ 
+     # Install system packages
+-    echo "Updating and installing system packages..."
+-    sudo apt-get update
+-    sudo apt-get install -y curl cmake software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libzmq3-dev git-lfs xxd wget
++    install_system_packages
+ 
+     # Create virtual environment
+     echo "Creating Python virtual environment..."
 -- 
 2.53.0.windows.2
 
