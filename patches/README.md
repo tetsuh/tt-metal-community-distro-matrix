@@ -77,7 +77,11 @@ In addition we use two informal trailers in the body:
 | `debian/0003-...sfpi...patch`            | Pending     |
 | `debian/0004-...install_llvm...patch`    | Pending     |
 | `debian/0005-...software-properties...patch` | Pending |
+| `debian/0006-...python-3.10-and-newer...patch` | Pending |
 | `linuxmint/0001-...toolchain-ppa.patch`      | Pending |
+| `linuxmint/0002-...python-3.10-and-newer...patch` | Pending |
+| `rocky/0001-...python-3.10-and-newer...patch` | Pending |
+| `ubuntu/0004-...python-3.10-and-newer...patch` | Pending |
 
 The compatibility table in the top-level `README.md` shows, for each
 distro, both the *vanilla* result (no patches) and the *with-patches*
