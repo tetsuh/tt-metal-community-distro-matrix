@@ -23,11 +23,11 @@ preflight checks.
 Upstream-Status: Pending
 Distro-Scope: linuxmint-21.3, linuxmint-22.1, linuxmint-22.2, linuxmint-22.3
 ---
- tt_metal/tt-llk/tests/setup_external_testing_env.sh | 29 ++++++++++++++++++++++++-----
- 1 file changed, 24 insertions(+), 5 deletions(-)
+ tt_metal/tt-llk/tests/setup_external_testing_env.sh | 55 ++++++++++++++++++++++++-----
+ 1 file changed, 50 insertions(+), 6 deletions(-)
 
 diff --git a/tt_metal/tt-llk/tests/setup_external_testing_env.sh b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
-index 4ea7e2b..8bf1d75 100755
+index 4ea7e2b..fa532d8 100644
 --- a/tt_metal/tt-llk/tests/setup_external_testing_env.sh
 +++ b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
 @@ -31,13 +31,34 @@ check_deps() {
@@ -78,6 +78,46 @@ index 4ea7e2b..8bf1d75 100755
  
      # Create virtual environment
      echo "Creating Python virtual environment..."
+@@ -94,7 +113,38 @@ if [[ "$REUSE" == false || ! -d "$VENV_DIR" ]]; then
+ 
+     # Install all Python dependencies
+     echo "Installing Python dependencies..."
+-    uv pip install -q --index-strategy unsafe-best-match --no-cache-dir -r requirements.txt
++    if uv pip install --index-strategy unsafe-best-match --no-cache-dir -r requirements.txt; then
++        echo "All dependencies installed successfully via uv pip"
++    else
++        echo "Standard pip install failed. Attempting source-build fallback for tt-umd..."
++        sed -E '/^\s*(tt-umd|tt-exalens)\s*(==|[#[:space:]]|$)/d' requirements.txt > requirements.tmp.txt
++        uv pip install --index-strategy unsafe-best-match --no-cache-dir -r requirements.tmp.txt
++        rm -f requirements.tmp.txt
++        
++        tt_umd_line=$(grep -E '^\s*tt-umd\s*==' requirements.txt | head -n1 || true)
++        if [[ -n "$tt_umd_line" ]]; then
++            tt_umd_ver=$(echo "$tt_umd_line" | sed -E 's/^\s*tt-umd\s*==\s*([^#[:space:]]+).*/\1/')
++            echo "Extracted tt-umd version pin: $tt_umd_ver"
++            tag_name="v$tt_umd_ver"
++            if [[ "$tt_umd_ver" =~ \.dev ]]; then
++                tag_name="v$(echo "$tt_umd_ver" | sed 's/\.dev/-dev./')"
++            fi
++            echo "Attempting to build tt-umd from source tag: $tag_name"
++            if ! uv pip install --index-strategy unsafe-best-match --no-cache-dir "git+https://github.com/tenstorrent/tt-umd.git@$tag_name"; then
++                echo "Tag $tag_name installation failed. Attempting fallback to v$tt_umd_ver..."
++                if ! uv pip install --index-strategy unsafe-best-match --no-cache-dir "git+https://github.com/tenstorrent/tt-umd.git@v$tt_umd_ver"; then
++                    echo "ERROR: Failed to install tt-umd from source tags ($tag_name or v$tt_umd_ver)." >&2
++                    exit 1
++                fi
++            fi
++        fi
++        
++        tt_exalens_line=$(grep -E '^\s*tt-exalens\s*==' requirements.txt | head -n1 || true)
++        if [[ -n "$tt_exalens_line" ]]; then
++            tt_exalens_ver=$(echo "$tt_exalens_line" | sed -E 's/^\s*tt-exalens\s*==\s*([^#[:space:]]+).*/\1/')
++            uv pip install --index-strategy unsafe-best-match --no-cache-dir "tt-exalens==$tt_exalens_ver"
++        fi
++    fi
+ 
+     # Download and extract SFPI release
+     ./setup_testing_env.sh
+
 -- 
 2.53.0.windows.2
-
