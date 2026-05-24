@@ -23,11 +23,11 @@ preflight checks.
 Upstream-Status: Pending
 Distro-Scope: ubuntu-26.04
 ---
- tt_metal/tt-llk/tests/setup_external_testing_env.sh | 55 ++++++++++++++++++++++++-----
- 1 file changed, 50 insertions(+), 6 deletions(-)
+ tt_metal/tt-llk/tests/setup_external_testing_env.sh | 58 ++++++++++++++++++--
+ 1 file changed, 52 insertions(+), 6 deletions(-)
 
 diff --git a/tt_metal/tt-llk/tests/setup_external_testing_env.sh b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
-index 4ea7e2b..fa532d8 100644
+index 4ea7e2b..fa532d8 100755
 --- a/tt_metal/tt-llk/tests/setup_external_testing_env.sh
 +++ b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
 @@ -31,13 +31,34 @@ check_deps() {
@@ -78,7 +78,7 @@ index 4ea7e2b..fa532d8 100644
  
      # Create virtual environment
      echo "Creating Python virtual environment..."
-@@ -94,7 +113,38 @@ if [[ "$REUSE" == false || ! -d "$VENV_DIR" ]]; then
+@@ -94,7 +113,34 @@ if [[ "$REUSE" == false || ! -d "$VENV_DIR" ]]; then
  
      # Install all Python dependencies
      echo "Installing Python dependencies..."
@@ -87,13 +87,10 @@ index 4ea7e2b..fa532d8 100644
 +        echo "All dependencies installed successfully via uv pip"
 +    else
 +        echo "Standard pip install failed. Attempting source-build fallback for tt-umd..."
-+        sed -E '/^\s*(tt-umd|tt-exalens)\s*(==|[#[:space:]]|$)/d' requirements.txt > requirements.tmp.txt
-+        uv pip install --index-strategy unsafe-best-match --no-cache-dir -r requirements.tmp.txt
-+        rm -f requirements.tmp.txt
-+        
-+        tt_umd_line=$(grep -E '^\s*tt-umd\s*==' requirements.txt | head -n1 || true)
-+        if [[ -n "$tt_umd_line" ]]; then
-+            tt_umd_ver=$(echo "$tt_umd_line" | sed -E 's/^\s*tt-umd\s*==\s*([^#[:space:]]+).*/\1/')
++        uv pip install --index-strategy unsafe-best-match --no-cache-dir -r <(sed -E '/^\s*(tt-umd|tt-exalens)\s*(==|[#[:space:]]|$)/d' requirements.txt)
++
++        tt_umd_ver=$(sed -nE 's/^\s*tt-umd\s*==\s*([^#[:space:]]+).*/\1/p' requirements.txt | head -n1)
++        if [[ -n "$tt_umd_ver" ]]; then
 +            echo "Extracted tt-umd version pin: $tt_umd_ver"
 +            tag_name="v$tt_umd_ver"
 +            if [[ "$tt_umd_ver" =~ \.dev ]]; then
@@ -108,10 +105,9 @@ index 4ea7e2b..fa532d8 100644
 +                fi
 +            fi
 +        fi
-+        
-+        tt_exalens_line=$(grep -E '^\s*tt-exalens\s*==' requirements.txt | head -n1 || true)
-+        if [[ -n "$tt_exalens_line" ]]; then
-+            tt_exalens_ver=$(echo "$tt_exalens_line" | sed -E 's/^\s*tt-exalens\s*==\s*([^#[:space:]]+).*/\1/')
++
++        tt_exalens_ver=$(sed -nE 's/^\s*tt-exalens\s*==\s*([^#[:space:]]+).*/\1/p' requirements.txt | head -n1)
++        if [[ -n "$tt_exalens_ver" ]]; then
 +            uv pip install --index-strategy unsafe-best-match --no-cache-dir "tt-exalens==$tt_exalens_ver"
 +        fi
 +    fi
