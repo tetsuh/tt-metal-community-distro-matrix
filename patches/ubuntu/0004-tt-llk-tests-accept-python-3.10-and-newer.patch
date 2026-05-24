@@ -23,11 +23,11 @@ preflight checks.
 Upstream-Status: Pending
 Distro-Scope: ubuntu-26.04
 ---
- tt_metal/tt-llk/tests/setup_external_testing_env.sh | 29 ++++++++++++++++++++++++-----
- 1 file changed, 24 insertions(+), 5 deletions(-)
+ tt_metal/tt-llk/tests/setup_external_testing_env.sh | 68 ++++++++++++++++++++--
+ 1 file changed, 62 insertions(+), 6 deletions(-)
 
 diff --git a/tt_metal/tt-llk/tests/setup_external_testing_env.sh b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
-index 4ea7e2b..8bf1d75 100755
+index 4ea7e2b..fa532d8 100755
 --- a/tt_metal/tt-llk/tests/setup_external_testing_env.sh
 +++ b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
 @@ -31,13 +31,34 @@ check_deps() {
@@ -78,6 +78,52 @@ index 4ea7e2b..8bf1d75 100755
  
      # Create virtual environment
      echo "Creating Python virtual environment..."
+@@ -94,7 +113,44 @@ if [[ "$REUSE" == false || ! -d "$VENV_DIR" ]]; then
+ 
+     # Install all Python dependencies
+     echo "Installing Python dependencies..."
+-    uv pip install -q --index-strategy unsafe-best-match --no-cache-dir -r requirements.txt
++    if uv pip install --index-strategy unsafe-best-match --no-cache-dir -r requirements.txt; then
++        echo "All dependencies installed successfully via uv pip"
++    else
++        echo "Standard pip install failed. Attempting source-build fallback for tt-umd..."
++        tt_umd_req=$(sed -nE '/^\s*tt-umd\s*(==|[#[:space:]]|$)/p' requirements.txt | head -n1)
++        tt_umd_ver=$(sed -nE 's/^\s*tt-umd\s*==\s*([^#[:space:]]+).*/\1/p' requirements.txt | head -n1)
++        tt_exalens_req=$(sed -nE '/^\s*tt-exalens\s*(==|[#[:space:]]|$)/p' requirements.txt | head -n1)
++        tt_exalens_ver=$(sed -nE 's/^\s*tt-exalens\s*==\s*([^#[:space:]]+).*/\1/p' requirements.txt | head -n1)
++        if [[ -n "$tt_umd_req" && -z "$tt_umd_ver" ]]; then
++            echo "ERROR: tt-umd must be exact-pinned for source-build fallback: $tt_umd_req" >&2
++            exit 1
++        fi
++        if [[ -n "$tt_exalens_req" && -z "$tt_exalens_ver" ]]; then
++            echo "ERROR: tt-exalens must be exact-pinned for fallback reinstall: $tt_exalens_req" >&2
++            exit 1
++        fi
++        uv pip install --index-strategy unsafe-best-match --no-cache-dir -r <(sed -E '/^\s*(tt-umd|tt-exalens)\s*(==|[#[:space:]]|$)/d' requirements.txt)
++
++        if [[ -n "$tt_umd_ver" ]]; then
++            echo "Extracted tt-umd version pin: $tt_umd_ver"
++            tag_name="v$tt_umd_ver"
++            if [[ "$tt_umd_ver" =~ \.dev ]]; then
++                tag_name="v$(echo "$tt_umd_ver" | sed 's/\.dev/-dev./')"
++            fi
++            echo "Attempting to build tt-umd from source tag: $tag_name"
++            if ! uv pip install --index-strategy unsafe-best-match --no-cache-dir "git+https://github.com/tenstorrent/tt-umd.git@$tag_name"; then
++                echo "Tag $tag_name installation failed. Attempting fallback to v$tt_umd_ver..."
++                if ! uv pip install --index-strategy unsafe-best-match --no-cache-dir "git+https://github.com/tenstorrent/tt-umd.git@v$tt_umd_ver"; then
++                    echo "ERROR: Failed to install tt-umd from source tags ($tag_name or v$tt_umd_ver)." >&2
++                    exit 1
++                fi
++            fi
++        fi
++
++        if [[ -n "$tt_exalens_ver" ]]; then
++            uv pip install --index-strategy unsafe-best-match --no-cache-dir "tt-exalens==$tt_exalens_ver"
++        fi
++    fi
+ 
+     # Download and extract SFPI release
+     ./setup_testing_env.sh
+
 -- 
 2.53.0.windows.2
-
