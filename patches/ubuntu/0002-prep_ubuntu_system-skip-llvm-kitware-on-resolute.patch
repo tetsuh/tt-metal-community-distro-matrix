@@ -1,42 +1,29 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From 9e38ff9c7cc00122c2067d6f1f203f27d3332d2b Mon Sep 17 00:00:00 2001
 From: Tetsuya Hayashi <tetsu.h@gmail.com>
-Date: Mon, 4 May 2026 00:00:00 +0900
-Subject: [PATCH] prep_ubuntu_system: skip apt.llvm.org and apt.kitware.com on
- Ubuntu 26.04 (resolute)
+Date: Mon, 1 Jun 2026 07:43:24 +0900
+Subject: [PATCH] prep_ubuntu_system: install distro LLVM and CMake on Ubuntu
+ 26.04
 
-Ubuntu 26.04 `resolute` already ships in main/universe::
+Ubuntu 26.04 resolute already provides the required LLVM 20 and CMake
+packages, but install_dependencies.sh still needs to install them when
+they are not preinstalled in the image.
 
-    clang-17     1:17.0.6-23ubuntu7
-    clang-20     1:20.1.8-2ubuntu8
-    llvm-20-dev  1:20.1.8-2ubuntu8
-    cmake        4.2.3-2ubuntu2
-
-so the apt.llvm.org and apt.kitware.com third-party APT repositories
-that `prep_ubuntu_system` adds for older Ubuntu releases are not
-useful here.  Worse, apt.llvm.org has not yet published a `resolute`
-pocket, so adding the source forces `apt-get update` to fail with a
-404 before any of the actual package installation runs.
-
-Wrap both repository setups in a `case "$OS_CODENAME"` guard that
-opts out of them on resolute and falls back to the distro
-toolchain. The guard can be dropped once every Ubuntu release we
-support has clang-20 and a recent CMake in distro.
-
-Combined with installing `clang-20` in the build image (so
-`install_llvm` skips its `apt.llvm.org/llvm.sh 20` invocation),
-this lets `install_dependencies.sh` complete cleanly on Ubuntu 26.04
-without any third-party APT sources.
+Install the distro packages in the resolute branch so install_llvm
+short-circuits cleanly and the build has cmake available without using
+apt.llvm.org or the CMake GitHub installer.
 
 Distro-Scope: ubuntu-26.04
+
 Upstream-Status: Pending
 ---
- install_dependencies.sh | 51 ++++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 34 insertions(+), 17 deletions(-)
+ install_dependencies.sh | 37 +++++++++++++++++++++++++------------
+ 1 file changed, 25 insertions(+), 12 deletions(-)
+
 diff --git a/install_dependencies.sh b/install_dependencies.sh
-index 6bc9158..8762d53 100644
+index 54fa5e1..5b2e261 100755
 --- a/install_dependencies.sh
 +++ b/install_dependencies.sh
-@@ -271,25 +271,40 @@ prep_ubuntu_system() {
+@@ -270,18 +270,31 @@ prep_ubuntu_system() {
      apt-get update
      apt-get install -y --no-install-recommends ca-certificates gpg lsb-release wget software-properties-common gnupg jq
  
@@ -46,23 +33,21 @@ index 6bc9158..8762d53 100644
 -    # Also v20
 -    echo "deb http://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-20 main" | tee /etc/apt/sources.list.d/llvm-20.list
 -
--    # Add Kitware repository for latest CMake
--    # If the kitware-archive-keyring package has not been installed previously, manually obtain a copy of our signing key
--    test -f /usr/share/doc/kitware-archive-keyring/copyright || wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
--
--    # Add the repository to sources list and update
--    echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $OS_CODENAME main" | tee /etc/apt/sources.list.d/kitware.list >/dev/null
--    apt-get update
+-    # Install CMake 4.0.2 directly from GitHub releases (avoids Kitware apt repo instability)
+-    local cmake_version="4.0.2"
+-    local cmake_installer="/tmp/cmake-${cmake_version}-installer.sh"
+-    wget -q "https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}-linux-x86_64.sh" -O "$cmake_installer"
+-    bash "$cmake_installer" --skip-license --prefix=/usr/local
+-    rm -f "$cmake_installer"
 +    # Ubuntu 26.04 (resolute) ships clang-17, clang-20, llvm-20-dev
 +    # and cmake (>= 4.2) directly in main/universe, so the
-+    # apt.llvm.org and apt.kitware.com third-party repositories
-+    # are not needed.  Skipping them also avoids the apt-get update
-+    # 404 that comes from those mirrors not yet publishing a
-+    # ``resolute`` pocket.  Drop this guard once every Ubuntu we
-+    # care about has clang-20 / cmake-recent in distro.
++    # apt.llvm.org repository and direct CMake installer are not needed.
++    # Skipping them also avoids the apt-get update 404 that comes from
++    # apt.llvm.org not yet publishing a ``resolute`` pocket.
 +    case "$OS_CODENAME" in
 +        resolute)
-+            echo "[INFO] Skipping apt.llvm.org and apt.kitware.com on $OS_CODENAME (distro provides clang-17/20 and cmake >= 4.2)"
++            echo "[INFO] Installing distro LLVM/CMake packages on $OS_CODENAME"
++            apt-get install -y --no-install-recommends clang-17 clang-20 llvm-20-dev cmake
 +            ;;
 +        *)
 +            # Add LLVM repository for Clang 17
@@ -71,26 +56,12 @@ index 6bc9158..8762d53 100644
 +            # Also v20
 +            echo "deb http://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-20 main" | tee /etc/apt/sources.list.d/llvm-20.list
 +
-+            # Add Kitware repository for latest CMake
-+            # If the kitware-archive-keyring package has not been installed previously, manually obtain a copy of our signing key
-+            test -f /usr/share/doc/kitware-archive-keyring/copyright || wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
-+
-+            # Add the repository to sources list and update
-+            echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $OS_CODENAME main" | tee /etc/apt/sources.list.d/kitware.list >/dev/null
-+            apt-get update
--
-+
--    # If the kitware-archive-keyring package was not installed previously, remove the manually obtained key to make room for the package
--    test -f /usr/share/doc/kitware-archive-keyring/copyright || rm /usr/share/keyrings/kitware-archive-keyring.gpg
-+            # If the kitware-archive-keyring package was not installed previously, remove the manually obtained key to make room for the package
-+            test -f /usr/share/doc/kitware-archive-keyring/copyright || rm /usr/share/keyrings/kitware-archive-keyring.gpg
--
-+
--    # Install the kitware-archive-keyring package to ensure that your keyring stays up to date as keys are rotated
--    apt-get install -y --no-install-recommends kitware-archive-keyring
-+            # Install the kitware-archive-keyring package to ensure that your keyring stays up to date as keys are rotated
-+            apt-get install -y --no-install-recommends kitware-archive-keyring
-+
++            # Install CMake 4.0.2 directly from GitHub releases (avoids Kitware apt repo instability)
++            local cmake_version="4.0.2"
++            local cmake_installer="/tmp/cmake-${cmake_version}-installer.sh"
++            wget -q "https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}-linux-x86_64.sh" -O "$cmake_installer"
++            bash "$cmake_installer" --skip-license --prefix=/usr/local
++            rm -f "$cmake_installer"
 +            ;;
 +    esac
  

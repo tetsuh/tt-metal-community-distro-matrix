@@ -1,0 +1,41 @@
+From 1b5adbf40334a4648fe9445eb1cdb6b70af57190 Mon Sep 17 00:00:00 2001
+From: Tetsuya Hayashi <tetsu.h@gmail.com>
+Date: Mon, 1 Jun 2026 07:15:53 +0900
+Subject: [PATCH] prep_redhat_system: limit oneAPI repo to TBB packages
+
+tt-metal only adds the Intel oneAPI repository to get oneTBB 2021+ on
+Red Hat family distros. Leaving the repo unrestricted lets DNF satisfy
+unrelated packages such as OpenMPI from oneAPI, which can pull older
+Intel RPMs signed by keys not advertised by the repository config and
+fail package GPG verification.
+
+Restrict the repo to the TBB-related packages required by
+intel-oneapi-tbb-devel. This preserves repo_gpgcheck and package
+gpgcheck while avoiding accidental dependency resolution through
+unrelated oneAPI packages.
+
+Upstream-Status: Pending
+
+Distro-Scope: rocky-9, rocky-10
+---
+ install_dependencies.sh | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/install_dependencies.sh b/install_dependencies.sh
+index 83fe4a3..47241be 100755
+--- a/install_dependencies.sh
++++ b/install_dependencies.sh
+@@ -308,6 +308,10 @@ enabled=1
+ gpgcheck=1
+ repo_gpgcheck=1
+ gpgkey=https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
++# Keep the Intel repository scoped to the oneAPI TBB packages tt-metal needs.
++# Without this, DNF may satisfy unrelated dependencies (for example OpenMPI)
++# from oneAPI, pulling older Intel packages signed by keys not listed above.
++includepkgs=intel-oneapi-tbb* intel-oneapi-common-* intel-oneapi-tcm-*
+ REPO_EOF
+ }
+ 
+-- 
+2.43.0
+
