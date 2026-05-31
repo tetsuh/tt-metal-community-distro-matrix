@@ -1,31 +1,29 @@
-From 79f596811b56eaed229fd55aae267b09d7f00b4c Mon Sep 17 00:00:00 2001
+From 9e38ff9c7cc00122c2067d6f1f203f27d3332d2b Mon Sep 17 00:00:00 2001
 From: Tetsuya Hayashi <tetsu.h@gmail.com>
-Date: Mon, 1 Jun 2026 07:15:53 +0900
-Subject: [PATCH] prep_ubuntu_system: skip apt.llvm.org and CMake installer on
- Ubuntu 26.04
+Date: Mon, 1 Jun 2026 07:43:24 +0900
+Subject: [PATCH] prep_ubuntu_system: install distro LLVM and CMake on Ubuntu
+ 26.04
 
-Ubuntu 26.04 resolute already ships clang-17, clang-20, llvm-20-dev,
-and cmake 4.2 in the distro repositories, so the third-party
-apt.llvm.org repository and the direct Kitware CMake installer are not
-useful there.
+Ubuntu 26.04 resolute already provides the required LLVM 20 and CMake
+packages, but install_dependencies.sh still needs to install them when
+they are not preinstalled in the image.
 
-apt.llvm.org has not yet published a resolute pocket, so adding the
-source forces apt-get update to fail with a 404 before the actual
-package installation runs. Guard both setup steps and use the distro
-toolchain on resolute.
+Install the distro packages in the resolute branch so install_llvm
+short-circuits cleanly and the build has cmake available without using
+apt.llvm.org or the CMake GitHub installer.
 
 Distro-Scope: ubuntu-26.04
 
 Upstream-Status: Pending
 ---
- install_dependencies.sh | 36 ++++++++++++++++++++++++------------
- 1 file changed, 24 insertions(+), 12 deletions(-)
+ install_dependencies.sh | 37 +++++++++++++++++++++++++------------
+ 1 file changed, 25 insertions(+), 12 deletions(-)
 
 diff --git a/install_dependencies.sh b/install_dependencies.sh
-index 54fa5e1..ad5f060 100755
+index 54fa5e1..5b2e261 100755
 --- a/install_dependencies.sh
 +++ b/install_dependencies.sh
-@@ -270,18 +270,30 @@ prep_ubuntu_system() {
+@@ -270,18 +270,31 @@ prep_ubuntu_system() {
      apt-get update
      apt-get install -y --no-install-recommends ca-certificates gpg lsb-release wget software-properties-common gnupg jq
  
@@ -48,7 +46,8 @@ index 54fa5e1..ad5f060 100755
 +    # apt.llvm.org not yet publishing a ``resolute`` pocket.
 +    case "$OS_CODENAME" in
 +        resolute)
-+            echo "[INFO] Skipping apt.llvm.org and CMake installer on $OS_CODENAME (distro provides clang-17/20 and cmake >= 4.2)"
++            echo "[INFO] Installing distro LLVM/CMake packages on $OS_CODENAME"
++            apt-get install -y --no-install-recommends clang-17 clang-20 llvm-20-dev cmake
 +            ;;
 +        *)
 +            # Add LLVM repository for Clang 17
@@ -70,4 +69,3 @@ index 54fa5e1..ad5f060 100755
      case "$UBUNTU_CODENAME" in
 -- 
 2.43.0
-
