@@ -81,6 +81,7 @@ In addition we use two informal trailers in the body:
 | `linuxmint/0002-...python-3.10-and-newer...patch` | Pending |
 | `rocky/0001-...python-3.10-and-newer...patch` | Pending |
 | `rocky/0002-...oneapi-repo-to-tbb...patch` | Pending |
+| `rocky/0003-...unversioned-clang...patch` | Pending |
 | `ubuntu/0002-...skip-llvm-kitware-on-resolute...patch` | Pending |
 | `ubuntu/0004-...python-3.10-and-newer...patch` | Pending |
 
