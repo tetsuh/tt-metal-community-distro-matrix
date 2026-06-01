@@ -1,0 +1,51 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tetsuya Hayashi <tetsu.h@gmail.com>
+Date: Mon, 1 Jun 2026 17:45:00 +0900
+Subject: [PATCH] toolchain: fall back to unversioned clang binaries
+
+Red Hat-family distributions package the supported LLVM toolchain as
+unversioned clang/clang++ binaries. The tt-metal clang-20 toolchain file
+hard-codes clang-20 and clang++-20, which makes CMake fail before it can
+configure on Rocky even though install_dependencies.sh has installed the
+distro clang package.
+
+Prefer the versioned LLVM 20 binaries when they exist, but fall back to
+the unversioned distro clang, clang++, and ld.lld names. This keeps
+Ubuntu's clang-20 path unchanged while allowing Rocky to use the compiler
+names its packages provide.
+
+Distro-Scope: rocky-9, rocky-10
+
+Upstream-Status: Pending
+---
+ cmake/x86_64-linux-clang-20-libstdcpp-toolchain.cmake | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/cmake/x86_64-linux-clang-20-libstdcpp-toolchain.cmake b/cmake/x86_64-linux-clang-20-libstdcpp-toolchain.cmake
+--- a/cmake/x86_64-linux-clang-20-libstdcpp-toolchain.cmake
++++ b/cmake/x86_64-linux-clang-20-libstdcpp-toolchain.cmake
+@@ -1,8 +1,10 @@
+ set(CMAKE_SYSTEM_PROCESSOR "x86_64")
+
+-set(CMAKE_C_COMPILER clang-20 CACHE INTERNAL "C compiler")
++find_program(TT_METAL_C_COMPILER NAMES clang-20 clang REQUIRED)
++set(CMAKE_C_COMPILER "${TT_METAL_C_COMPILER}" CACHE FILEPATH "C compiler")
+
+-set(CMAKE_CXX_COMPILER clang++-20 CACHE INTERNAL "C++ compiler")
++find_program(TT_METAL_CXX_COMPILER NAMES clang++-20 clang++ REQUIRED)
++set(CMAKE_CXX_COMPILER "${TT_METAL_CXX_COMPILER}" CACHE FILEPATH "C++ compiler")
+
+ # Use for configure time
+ set(ENABLE_LIBCXX FALSE CACHE INTERNAL "Using clang's libc++")
+@@ -13,7 +15,7 @@ find_program(MOLD ld.mold)
+ if(MOLD)
+     set(CMAKE_LINKER_TYPE MOLD)
+ else()
+-    find_program(LLD ld.lld-20)
++    find_program(LLD NAMES ld.lld-20 ld.lld)
+     if(LLD)
+         set(CMAKE_LINKER_TYPE LLD)
+     endif()
+ endif()
+--
+2.43.0
