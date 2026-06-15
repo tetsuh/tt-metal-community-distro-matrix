@@ -1,14 +1,14 @@
 {
-  "recorded_at": "2026-06-14T19:17:02Z",
-  "run_dir": "runs/27508516238",
-  "run_id": "27508516238",
-  "run_url": "https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/27508516238",
+  "recorded_at": "2026-06-15T16:28:19Z",
+  "run_dir": "runs/27560396063",
+  "run_id": "27560396063",
+  "run_url": "https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/27560396063",
   "schema_version": 1,
   "target_count": 9,
   "targets": [
     {
       "distro": "linuxmint",
-      "failure_stage": "patch",
+      "failure_stage": "na",
       "install_patch_count": 0,
       "install_status_patched": "na",
       "install_status_vanilla": "na",
@@ -26,7 +26,7 @@
     },
     {
       "distro": "linuxmint",
-      "failure_stage": "patch",
+      "failure_stage": "na",
       "install_patch_count": 0,
       "install_status_patched": "na",
       "install_status_vanilla": "na",
@@ -44,7 +44,7 @@
     },
     {
       "distro": "linuxmint",
-      "failure_stage": "patch",
+      "failure_stage": "na",
       "install_patch_count": 0,
       "install_status_patched": "na",
       "install_status_vanilla": "na",
@@ -62,7 +62,7 @@
     },
     {
       "distro": "linuxmint",
-      "failure_stage": "patch",
+      "failure_stage": "na",
       "install_patch_count": 0,
       "install_status_patched": "na",
       "install_status_vanilla": "na",
@@ -80,7 +80,7 @@
     },
     {
       "distro": "ubuntu",
-      "failure_stage": "patch",
+      "failure_stage": "na",
       "install_patch_count": 0,
       "install_status_patched": "na",
       "install_status_vanilla": "na",
@@ -98,7 +98,7 @@
     },
     {
       "distro": "debian",
-      "failure_stage": "patch",
+      "failure_stage": "na",
       "install_patch_count": 0,
       "install_status_patched": "na",
       "install_status_vanilla": "na",
@@ -116,7 +116,7 @@
     },
     {
       "distro": "debian",
-      "failure_stage": "patch",
+      "failure_stage": "na",
       "install_patch_count": 0,
       "install_status_patched": "na",
       "install_status_vanilla": "na",
@@ -128,8 +128,8 @@
       "runtime_status": "na",
       "status": "failure",
       "target_os": "debian-12",
-      "vanilla_failure_stage": "na",
-      "vanilla_status": "success",
+      "vanilla_failure_stage": "deps",
+      "vanilla_status": "failure",
       "version": "12"
     },
     {
@@ -155,14 +155,14 @@
       "failure_stage": "na",
       "install_patch_count": 0,
       "install_status_patched": "na",
-      "install_status_vanilla": "success",
+      "install_status_vanilla": "na",
       "patch_count": 3,
       "runtime_failure_stage": "na",
-      "runtime_python_version": "3.11",
+      "runtime_python_version": "",
       "runtime_skip_reason": "",
       "runtime_smoke_target": "test_risc_compute.py::test_risc_compute",
-      "runtime_status": "success",
-      "status": "success",
+      "runtime_status": "na",
+      "status": "failure",
       "target_os": "rocky-9",
       "vanilla_failure_stage": "deps",
       "vanilla_status": "failure",
@@ -171,5 +171,5 @@
   ],
   "tt_metal_ref": "main",
   "tt_metal_repo": "tenstorrent/tt-metal",
-  "tt_metal_sha": "c51e69e2735e67789dfe1bb876422b3c1244f825"
+  "tt_metal_sha": "f4f16ce23dcf3cbd8cb15dfb16132ef854b8772b"
 }
