@@ -17,9 +17,15 @@ ENV LANG=en_US.UTF-8 \
 #  * patch / file / zlib-devel cover gaps in tt-metal prep_redhat_system
 #  * MPI environment variables expose the openmpi install under
 #    /usr/lib64/openmpi/ to pkg-config / runtime loaders.
+#
+# The curl swap is guarded by `rpm -q curl-minimal`: newer Rocky 10 base
+# images already ship the full `curl` package, in which case
+# `dnf swap curl-minimal curl` aborts with a conflict. The guard makes the
+# swap a no-op when full curl is already present (and keeps working on
+# images that still ship curl-minimal, e.g. Rocky 9).
 RUN dnf -y install dnf-plugins-core epel-release \
  && dnf config-manager --set-enabled crb \
- && dnf -y swap curl-minimal curl \
+ && if rpm -q curl-minimal >/dev/null 2>&1; then dnf -y swap curl-minimal curl; fi \
  && dnf -y install \
         sudo \
         git \

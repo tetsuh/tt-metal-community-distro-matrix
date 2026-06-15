@@ -36,6 +36,8 @@ ENV LANG=en_US.UTF-8 \
 # curl package: tt-metal's install_dependencies.sh installs `curl`
 # unconditionally, which conflicts with curl-minimal. Doing the swap once
 # here is cheaper than asking install_dependencies.sh to use --allowerasing.
+# The swap is guarded by `rpm -q curl-minimal` so it is a no-op on base
+# images that already ship the full curl package (see os/rocky/10/Dockerfile).
 #
 # Bootstrap utilities beyond the upstream image baseline:
 #   sudo / git / ca-certificates / glibc-langpack-en / procps-ng — basic
@@ -60,7 +62,7 @@ ENV LANG=en_US.UTF-8 \
 # mpi/openmpi-x86_64` to make it visible).
 RUN dnf -y install dnf-plugins-core epel-release \
  && dnf config-manager --set-enabled crb \
- && dnf -y swap curl-minimal curl \
+ && if rpm -q curl-minimal >/dev/null 2>&1; then dnf -y swap curl-minimal curl; fi \
  && dnf -y install \
         sudo \
         git \
