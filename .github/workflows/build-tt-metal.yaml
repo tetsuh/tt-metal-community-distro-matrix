@@ -193,7 +193,7 @@ jobs:
                 set -ux
                 git config --global --add safe.directory "*"
                 cat /etc/os-release
-                ./install_dependencies.sh --docker
+                ./install_dependencies.sh
                 deps_rc=$?
                 echo "__TTMCDM_VANILLA_DEPS_RC=$deps_rc"
                 exit "$deps_rc"
@@ -257,7 +257,12 @@ jobs:
                 exit "$patch_rc"
               fi
               echo "__TTMCDM_STAGE=deps"
-              ./install_dependencies.sh --docker
+              # NOTE: install_dependencies.sh is intentionally invoked WITHOUT
+              # --docker. The upstream --docker mode skips installing CMake,
+              # SFPI and MPI/ULFM (it assumes a prebuilt tool image provides
+              # them). Our community-distro base images do not, so we run the
+              # full host install path to get cmake/clang/sfpi/mpi for the build.
+              ./install_dependencies.sh
               deps_rc=$?
               echo "__TTMCDM_DEPS_RC=$deps_rc"
               if [ "$deps_rc" -ne 0 ]; then
@@ -455,7 +460,7 @@ jobs:
               fi
               python_version="$(python3 -c "import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")")"
               echo "__TTMCDM_RUNTIME_PYTHON_VERSION=${python_version}"
-              ./install_dependencies.sh --docker
+              ./install_dependencies.sh
               bash /workspace/scripts/ttsim-smoke.sh /workspace/tt-metal
             ' 2>&1 | tee logs/runtime.log
           runtime_rc=${PIPESTATUS[0]}

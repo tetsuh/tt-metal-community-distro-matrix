@@ -1,6 +1,6 @@
-From 9e38ff9c7cc00122c2067d6f1f203f27d3332d2b Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Tetsuya Hayashi <tetsu.h@gmail.com>
-Date: Mon, 1 Jun 2026 07:43:24 +0900
+Date: Tue, 16 Jun 2026 01:34:39 +0900
 Subject: [PATCH] prep_ubuntu_system: install distro LLVM and CMake on Ubuntu
  26.04
 
@@ -16,14 +16,14 @@ Distro-Scope: ubuntu-26.04
 
 Upstream-Status: Pending
 ---
- install_dependencies.sh | 37 +++++++++++++++++++++++++------------
- 1 file changed, 25 insertions(+), 12 deletions(-)
+ install_dependencies.sh | 47 ++++++++++++++++++++++++++++-------------
+ 1 file changed, 32 insertions(+), 15 deletions(-)
 
 diff --git a/install_dependencies.sh b/install_dependencies.sh
-index 54fa5e1..5b2e261 100755
+index 41a0057..97c3d2e 100755
 --- a/install_dependencies.sh
 +++ b/install_dependencies.sh
-@@ -270,18 +270,31 @@ prep_ubuntu_system() {
+@@ -274,22 +274,39 @@ prep_ubuntu_system() {
      apt-get update
      apt-get install -y --no-install-recommends ca-certificates gpg lsb-release wget software-properties-common gnupg jq
  
@@ -32,21 +32,18 @@ index 54fa5e1..5b2e261 100755
 -    echo "deb http://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-17 main" | tee /etc/apt/sources.list.d/llvm-17.list
 -    # Also v20
 -    echo "deb http://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-20 main" | tee /etc/apt/sources.list.d/llvm-20.list
--
--    # Install CMake 4.0.2 directly from GitHub releases (avoids Kitware apt repo instability)
--    local cmake_version="4.0.2"
--    local cmake_installer="/tmp/cmake-${cmake_version}-installer.sh"
--    wget -q "https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}-linux-x86_64.sh" -O "$cmake_installer"
--    bash "$cmake_installer" --skip-license --prefix=/usr/local
--    rm -f "$cmake_installer"
-+    # Ubuntu 26.04 (resolute) ships clang-17, clang-20, llvm-20-dev
-+    # and cmake (>= 4.2) directly in main/universe, so the
-+    # apt.llvm.org repository and direct CMake installer are not needed.
-+    # Skipping them also avoids the apt-get update 404 that comes from
-+    # apt.llvm.org not yet publishing a ``resolute`` pocket.
++    # Ubuntu 26.04 (resolute) ships clang-17, clang-20, llvm-20-dev and
++    # cmake (>= 4.2) directly in main/universe, so the apt.llvm.org
++    # repository and the GitHub CMake installer are unnecessary there.
++    # apt.llvm.org has also not published a "resolute" pocket yet, so adding
++    # it makes the trailing "apt-get update" fail with a 404. Install the
++    # distro packages on resolute and keep the upstream behaviour elsewhere.
 +    case "$OS_CODENAME" in
 +        resolute)
 +            echo "[INFO] Installing distro LLVM/CMake packages on $OS_CODENAME"
++            # clang-17 is included defensively to mirror the LLVM set that
++            # upstream's install_llvm would install from apt.llvm.org on
++            # non-resolute Ubuntu releases.
 +            apt-get install -y --no-install-recommends clang-17 clang-20 llvm-20-dev cmake
 +            ;;
 +        *)
@@ -55,13 +52,27 @@ index 54fa5e1..5b2e261 100755
 +            echo "deb http://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-17 main" | tee /etc/apt/sources.list.d/llvm-17.list
 +            # Also v20
 +            echo "deb http://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-20 main" | tee /etc/apt/sources.list.d/llvm-20.list
-+
-+            # Install CMake 4.0.2 directly from GitHub releases (avoids Kitware apt repo instability)
-+            local cmake_version="4.0.2"
-+            local cmake_installer="/tmp/cmake-${cmake_version}-installer.sh"
-+            wget -q "https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}-linux-x86_64.sh" -O "$cmake_installer"
-+            bash "$cmake_installer" --skip-license --prefix=/usr/local
-+            rm -f "$cmake_installer"
+ 
+-    # Install CMake from GitHub releases (skip in Docker, cmake provided via tool image)
+-    if [ "$docker" -ne 1 ]; then
+-        local cmake_version="4.0.2"
+-        local cmake_installer="/tmp/cmake-${cmake_version}-installer.sh"
+-        wget -q "https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}-linux-x86_64.sh" -O "$cmake_installer"
+-        bash "$cmake_installer" --skip-license --prefix=/usr/local
+-        rm -f "$cmake_installer"
+-    else
+-        echo "[INFO] Skipping CMake install in Docker (cmake provided via tool image)"
+-    fi
++            # Install CMake from GitHub releases (skip in Docker, cmake provided via tool image)
++            if [ "$docker" -ne 1 ]; then
++                local cmake_version="4.0.2"
++                local cmake_installer="/tmp/cmake-${cmake_version}-installer.sh"
++                wget -q "https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}-linux-x86_64.sh" -O "$cmake_installer"
++                bash "$cmake_installer" --skip-license --prefix=/usr/local
++                rm -f "$cmake_installer"
++            else
++                echo "[INFO] Skipping CMake install in Docker (cmake provided via tool image)"
++            fi
 +            ;;
 +    esac
  
@@ -69,3 +80,4 @@ index 54fa5e1..5b2e261 100755
      case "$UBUNTU_CODENAME" in
 -- 
 2.43.0
+

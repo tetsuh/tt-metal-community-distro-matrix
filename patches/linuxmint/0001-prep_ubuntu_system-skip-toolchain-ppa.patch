@@ -1,4 +1,4 @@
-From 51f19c28f24fc9b4160626c25f76fecf4dab29a5 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Tetsuya Hayashi <tetsu.h@gmail.com>
 Date: Mon, 1 Jun 2026 07:15:53 +0900
 Subject: [PATCH] prep_ubuntu_system: skip ubuntu-toolchain-r PPA when g++-14
@@ -23,13 +23,13 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
  1 file changed, 14 insertions(+), 3 deletions(-)
 
 diff --git a/install_dependencies.sh b/install_dependencies.sh
-index 83fe4a3..5738ff4 100755
+index 95ac79c9..2475b88d 100755
 --- a/install_dependencies.sh
 +++ b/install_dependencies.sh
-@@ -283,11 +283,22 @@ prep_ubuntu_system() {
-     bash "$cmake_installer" --skip-license --prefix=/usr/local
-     rm -f "$cmake_installer"
- 
+@@ -291,11 +291,22 @@ prep_ubuntu_system() {
+         echo "[INFO] Skipping CMake install in Docker (cmake provided via tool image)"
+     fi
+
 -    # Add GCC toolchain repository for specific g++ versions if needed
 +    # Add GCC toolchain repository for specific g++ versions if needed.
 +    #
@@ -51,7 +51,6 @@ index 83fe4a3..5738ff4 100755
 +            fi
              ;;
      esac
- 
+
 -- 
 2.43.0
-
