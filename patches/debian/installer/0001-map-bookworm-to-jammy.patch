@@ -1,0 +1,64 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tetsuya Hayashi <tetsu.h@gmail.com>
+Date: Wed, 18 Jun 2026 00:00:00 +0900
+Subject: [PATCH] installer: map Debian 12 (bookworm) to Ubuntu jammy for the
+ Tenstorrent PPA
+
+The Tenstorrent apt repository at ``https://ppa.tenstorrent.com/debian/``
+currently publishes only a ``trixie`` pocket (Debian 13). On Debian 12
+("bookworm") the upstream installer derives the pocket name from
+``VERSION_CODENAME=bookworm`` and the resulting ``apt-get update`` aborts
+with HTTP 404, which prevents the rest of the installer from running.
+
+Until Tenstorrent ships a bookworm pocket, fall back to the Ubuntu
+``jammy`` pocket (22.04 LTS) when the running release is bookworm. This
+is safe because:
+
+  * glibc compatibility: jammy packages are built against glibc 2.35,
+    which is forward-compatible with bookworm's glibc 2.36.
+  * Package availability: the Ubuntu jammy pocket provides the full
+    package set (tt-metalium, tt-nn, tt-smi, etc.), whereas the Debian
+    trixie pocket only provides a limited subset (pyluwen, sfpi, dkms).
+
+Tested on:
+  * Debian 12 (bookworm)  -> bookworm remapped to jammy (Ubuntu PPA)
+  * Debian 13 (trixie)    -> uses VERSION_CODENAME=trixie unchanged (Debian PPA)
+
+Upstream-Status: Pending [tenstorrent/tt-installer]
+Signed-off-by: Tetsuya Hayashi <tetsu.h@gmail.com>
+---
+ install.m4 | 19 +++++++++++++++++--
+ 1 file changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/install.m4 b/install.m4
+index 0000000..0000001 100644
+--- a/install.m4
++++ b/install.m4
+@@ -749,8 +749,23 @@ install_tt_repos () {
+ 		"debian")
+ 			# Add the apt listing
+ 			# shellcheck disable=2002
+-			echo "deb [signed-by=/etc/apt/keyrings/tt-pkg-key.asc] https://ppa.tenstorrent.com/debian/ $( cat /etc/os-release | grep "^VERSION_CODENAME=" | sed 's/^VERSION_CODENAME=//' ) main" | sudo tee /etc/apt/sources.list.d/tenstorrent.list > /dev/null
+-
++			# Extract the codename from /etc/os-release.
++			codename=$(cat /etc/os-release | grep "^VERSION_CODENAME=" | sed 's/^VERSION_CODENAME=//')
++			# ppa.tenstorrent.com/debian only publishes a trixie pocket;
++			# map Debian 12 (bookworm) to the Ubuntu jammy pocket, which has
++			# compatible glibc (2.35 vs bookworm's 2.36) and provides the
++			# full package set (tt-metalium, tt-nn, etc.).
++			case "${codename}" in
++				bookworm)
++					ppa_url="https://ppa.tenstorrent.com/ubuntu/"
++					codename="jammy"
++					;;
++				*)
++					ppa_url="https://ppa.tenstorrent.com/debian/"
++					;;
++			esac
++			echo "deb [signed-by=/etc/apt/keyrings/tt-pkg-key.asc] ${ppa_url} ${codename} main" | sudo tee /etc/apt/sources.list.d/tenstorrent.list > /dev/null
++
+ 			# Setup the keyring
+ 			sudo mkdir -p /etc/apt/keyrings; sudo chmod 755 /etc/apt/keyrings
+ 
+-- 
+2.43.0
