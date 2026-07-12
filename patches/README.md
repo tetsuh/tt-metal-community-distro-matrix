@@ -72,18 +72,17 @@ In addition we use two informal trailers in the body:
 
 | Path                         | Status      |
 |------------------------------|-------------|
-| `debian/0001-...apt-key.patch`           | Pending     |
-| `debian/0003-...sfpi...patch`            | Pending     |
-| `debian/0004-...install_llvm...patch`    | Pending     |
-| `debian/0005-...software-properties...patch` | Pending |
-| `debian/0006-...python-3.10-and-newer...patch` | Pending |
+| `debian/0001-...sfpi...patch`            | Pending     |
+| `debian/0002-...install_llvm...patch`    | Pending     |
+| `debian/0003-...software-properties...patch` | Pending |
+| `debian/0004-...python-3.10-and-newer...patch` | Pending |
 | `linuxmint/0001-...toolchain-ppa.patch`      | Pending |
 | `linuxmint/0002-...python-3.10-and-newer...patch` | Pending |
 | `rocky/0001-...python-3.10-and-newer...patch` | Pending |
-| `rocky/0002-...oneapi-repo-to-tbb...patch` | Pending |
-| `rocky/0003-...unversioned-clang...patch` | Pending |
-| `ubuntu/0002-...skip-llvm-kitware-on-resolute...patch` | Pending |
-| `ubuntu/0004-...python-3.10-and-newer...patch` | Pending |
+| `rocky/0002-...unversioned-clang...patch` | Pending |
+| `ubuntu/0001-...skip-llvm-kitware-on-resolute...patch` | Pending |
+| `ubuntu/0002-...cmake4...patch`          | Pending     |
+| `ubuntu/0003-...python-3.10-and-newer...patch` | Pending |
 
 The compatibility table in the top-level `README.md` shows, for each
 distro, both the *vanilla* result (no patches) and the *with-patches*

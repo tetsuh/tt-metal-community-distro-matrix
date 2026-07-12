@@ -25,10 +25,10 @@ Distro-Scope: debian-13
  1 file changed, 12 insertions(+), 1 deletion(-)
 
 diff --git a/install_dependencies.sh b/install_dependencies.sh
-index 678d26b..460efc5 100755
+index 9d860a0..56af46d 100644
 --- a/install_dependencies.sh
 +++ b/install_dependencies.sh
-@@ -269,7 +269,18 @@ prep_ubuntu_system() {
+@@ -272,7 +272,18 @@ prep_ubuntu_system() {
      echo "[INFO] Preparing Ubuntu/Debian system..."
      # Update package lists and install basic tools
      apt-get update
@@ -47,7 +47,4 @@ index 678d26b..460efc5 100755
 +    apt-get install -y --no-install-recommends $base_pkgs
  
      # Add LLVM repository for Clang 17
-     wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor -o /etc/apt/trusted.gpg.d/apt-llvm-org.gpg
--- 
-2.53.0.windows.2
-
+     local llvm_keyring="/usr/share/keyrings/llvm-snapshot.gpg"

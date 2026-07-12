@@ -13,25 +13,40 @@ short-circuits cleanly and the build has cmake available without using
 apt.llvm.org or the CMake GitHub installer.
 
 Distro-Scope: ubuntu-26.04
-
 Upstream-Status: Pending
 ---
- install_dependencies.sh | 47 ++++++++++++++++++++++++++++-------------
- 1 file changed, 32 insertions(+), 15 deletions(-)
+ install_dependencies.sh | 59 ++++++++++++++++++++++++++---------------
+ 1 file changed, 38 insertions(+), 21 deletions(-)
 
 diff --git a/install_dependencies.sh b/install_dependencies.sh
-index 41a0057..97c3d2e 100755
+index 9d860a0..7534302 100644
 --- a/install_dependencies.sh
 +++ b/install_dependencies.sh
-@@ -274,22 +274,39 @@ prep_ubuntu_system() {
+@@ -274,27 +274,44 @@ prep_ubuntu_system() {
      apt-get update
      apt-get install -y --no-install-recommends ca-certificates gpg lsb-release wget software-properties-common gnupg jq
  
 -    # Add LLVM repository for Clang 17
--    wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor -o /etc/apt/trusted.gpg.d/apt-llvm-org.gpg
--    echo "deb http://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-17 main" | tee /etc/apt/sources.list.d/llvm-17.list
+-    local llvm_keyring="/usr/share/keyrings/llvm-snapshot.gpg"
+-    local llvm_keyring_tmp
+-    llvm_keyring_tmp="$(mktemp "${llvm_keyring}.XXXXXX")"
+-    ( set -o pipefail; wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor --batch --yes --no-tty -o "$llvm_keyring_tmp" )
+-    chmod 0644 "$llvm_keyring_tmp"
+-    mv -f "$llvm_keyring_tmp" "$llvm_keyring"
+-    echo "deb [signed-by=$llvm_keyring] https://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-17 main" | tee /etc/apt/sources.list.d/llvm-17.list
 -    # Also v20
--    echo "deb http://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-20 main" | tee /etc/apt/sources.list.d/llvm-20.list
+-    echo "deb [signed-by=$llvm_keyring] https://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-20 main" | tee /etc/apt/sources.list.d/llvm-20.list
+-
+-    # Install CMake from GitHub releases (skip in Docker, cmake provided via tool image)
+-    if [ "$docker" -ne 1 ]; then
+-        local cmake_version="4.0.2"
+-        local cmake_installer="/tmp/cmake-${cmake_version}-installer.sh"
+-        wget -q "https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}-linux-x86_64.sh" -O "$cmake_installer"
+-        bash "$cmake_installer" --skip-license --prefix=/usr/local
+-        rm -f "$cmake_installer"
+-    else
+-        echo "[INFO] Skipping CMake install in Docker (cmake provided via tool image)"
+-    fi
 +    # Ubuntu 26.04 (resolute) ships clang-17, clang-20, llvm-20-dev and
 +    # cmake (>= 4.2) directly in main/universe, so the apt.llvm.org
 +    # repository and the GitHub CMake installer are unnecessary there.
@@ -48,21 +63,16 @@ index 41a0057..97c3d2e 100755
 +            ;;
 +        *)
 +            # Add LLVM repository for Clang 17
-+            wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor -o /etc/apt/trusted.gpg.d/apt-llvm-org.gpg
-+            echo "deb http://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-17 main" | tee /etc/apt/sources.list.d/llvm-17.list
++            local llvm_keyring="/usr/share/keyrings/llvm-snapshot.gpg"
++            local llvm_keyring_tmp
++            llvm_keyring_tmp="$(mktemp "${llvm_keyring}.XXXXXX")"
++            ( set -o pipefail; wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor --batch --yes --no-tty -o "$llvm_keyring_tmp" )
++            chmod 0644 "$llvm_keyring_tmp"
++            mv -f "$llvm_keyring_tmp" "$llvm_keyring"
++            echo "deb [signed-by=$llvm_keyring] https://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-17 main" | tee /etc/apt/sources.list.d/llvm-17.list
 +            # Also v20
-+            echo "deb http://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-20 main" | tee /etc/apt/sources.list.d/llvm-20.list
- 
--    # Install CMake from GitHub releases (skip in Docker, cmake provided via tool image)
--    if [ "$docker" -ne 1 ]; then
--        local cmake_version="4.0.2"
--        local cmake_installer="/tmp/cmake-${cmake_version}-installer.sh"
--        wget -q "https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}-linux-x86_64.sh" -O "$cmake_installer"
--        bash "$cmake_installer" --skip-license --prefix=/usr/local
--        rm -f "$cmake_installer"
--    else
--        echo "[INFO] Skipping CMake install in Docker (cmake provided via tool image)"
--    fi
++            echo "deb [signed-by=$llvm_keyring] https://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-20 main" | tee /etc/apt/sources.list.d/llvm-20.list
++
 +            # Install CMake from GitHub releases (skip in Docker, cmake provided via tool image)
 +            if [ "$docker" -ne 1 ]; then
 +                local cmake_version="4.0.2"
@@ -78,6 +88,3 @@ index 41a0057..97c3d2e 100755
  
      # Add GCC toolchain repository for specific g++ versions if needed
      case "$UBUNTU_CODENAME" in
--- 
-2.43.0
-
