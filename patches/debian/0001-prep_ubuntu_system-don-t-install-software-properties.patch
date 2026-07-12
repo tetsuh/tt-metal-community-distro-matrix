@@ -21,14 +21,14 @@ Debian 13+, where it is both unavailable and unneeded.
 Upstream-Status: Pending
 Distro-Scope: debian-13
 ---
- install_dependencies.sh | 13 ++++++++++++-
- 1 file changed, 12 insertions(+), 1 deletion(-)
+ install_dependencies.sh | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
 
 diff --git a/install_dependencies.sh b/install_dependencies.sh
 index 9d860a0..56af46d 100644
 --- a/install_dependencies.sh
 +++ b/install_dependencies.sh
-@@ -272,7 +272,18 @@ prep_ubuntu_system() {
+@@ -272,10 +272,24 @@ prep_ubuntu_system() {
      echo "[INFO] Preparing Ubuntu/Debian system..."
      # Update package lists and install basic tools
      apt-get update
@@ -41,10 +41,18 @@ index 9d860a0..56af46d 100644
 +    # required by llvm.sh below, which probes for add-apt-repository
 +    # unless it is running on a "new" Debian (trixie+).
 +    base_pkgs="ca-certificates gpg lsb-release wget software-properties-common gnupg jq"
-+    if [ "${ID:-}" = "debian" ] && [ "${VERSION_CODENAME:-}" = "trixie" ]; then
++    if [ "${ID:-}" = "debian" ] && { [ "${VERSION_CODENAME:-}" = "trixie" ] || [ "${VERSION_CODENAME:-}" = "forky" ] || [ "${VERSION_CODENAME:-}" = "unstable" ]; }; then
 +	base_pkgs="ca-certificates gpg lsb-release wget gnupg jq"
 +    fi
 +    apt-get install -y --no-install-recommends $base_pkgs
  
      # Add LLVM repository for Clang 17
      local llvm_keyring="/usr/share/keyrings/llvm-snapshot.gpg"
++    if [ "${ID:-}" = "debian" ] && { [ "${VERSION_CODENAME:-}" = "trixie" ] || [ "${VERSION_CODENAME:-}" = "forky" ] || [ "${VERSION_CODENAME:-}" = "unstable" ]; }; then
++	llvm_keyring="/etc/apt/trusted.gpg.d/apt.llvm.org.asc"
++    fi
+     local llvm_keyring_tmp
+     llvm_keyring_tmp="$(mktemp "${llvm_keyring}.XXXXXX")"
+     ( set -o pipefail; wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor --batch --yes --no-tty -o "$llvm_keyring_tmp" )
+-- 
+2.43.0
