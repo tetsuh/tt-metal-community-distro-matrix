@@ -1,8 +1,8 @@
 {
-  "recorded_at": "2026-07-05T19:37:45Z",
-  "run_dir": "runs/28750928446",
-  "run_id": "28750928446",
-  "run_url": "https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/28750928446",
+  "recorded_at": "2026-07-13T15:32:38Z",
+  "run_dir": "runs/29258581555",
+  "run_id": "29258581555",
+  "run_url": "https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/29258581555",
   "schema_version": 1,
   "target_count": 9,
   "targets": [
@@ -84,7 +84,7 @@
       "install_patch_count": 1,
       "install_status_patched": "success",
       "install_status_vanilla": "failure",
-      "patch_count": 4,
+      "patch_count": 3,
       "runtime_failure_stage": "runtime",
       "runtime_python_version": "3.14",
       "runtime_skip_reason": "",
@@ -102,7 +102,7 @@
       "install_patch_count": 1,
       "install_status_patched": "success",
       "install_status_vanilla": "success",
-      "patch_count": 5,
+      "patch_count": 4,
       "runtime_failure_stage": "na",
       "runtime_python_version": "3.13",
       "runtime_skip_reason": "",
@@ -120,7 +120,7 @@
       "install_patch_count": 1,
       "install_status_patched": "success",
       "install_status_vanilla": "failure",
-      "patch_count": 5,
+      "patch_count": 4,
       "runtime_failure_stage": "na",
       "runtime_python_version": "3.11",
       "runtime_skip_reason": "",
@@ -138,7 +138,7 @@
       "install_patch_count": 0,
       "install_status_patched": "na",
       "install_status_vanilla": "success",
-      "patch_count": 3,
+      "patch_count": 2,
       "runtime_failure_stage": "na",
       "runtime_python_version": "3.12",
       "runtime_skip_reason": "",
@@ -146,8 +146,8 @@
       "runtime_status": "success",
       "status": "success",
       "target_os": "rocky-10",
-      "vanilla_failure_stage": "deps",
-      "vanilla_status": "failure",
+      "vanilla_failure_stage": "na",
+      "vanilla_status": "success",
       "version": "10"
     },
     {
@@ -156,7 +156,7 @@
       "install_patch_count": 0,
       "install_status_patched": "na",
       "install_status_vanilla": "success",
-      "patch_count": 3,
+      "patch_count": 2,
       "runtime_failure_stage": "na",
       "runtime_python_version": "3.11",
       "runtime_skip_reason": "",
@@ -164,12 +164,12 @@
       "runtime_status": "success",
       "status": "success",
       "target_os": "rocky-9",
-      "vanilla_failure_stage": "deps",
-      "vanilla_status": "failure",
+      "vanilla_failure_stage": "na",
+      "vanilla_status": "success",
       "version": "9"
     }
   ],
   "tt_metal_ref": "main",
   "tt_metal_repo": "tenstorrent/tt-metal",
-  "tt_metal_sha": "33105d7568a84479e5d68203392e733c217843f9"
+  "tt_metal_sha": "05b5201cc4e3db0322fed8b3b1a0ee54f1c2b19b"
 }
