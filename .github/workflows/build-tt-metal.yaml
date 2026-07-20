@@ -42,14 +42,14 @@ permissions:
 # pin so that compatibility regressions can only be introduced by
 # changes in this repo, in tt-metal, or in the target distro images.
 env:
-  TT_INSTALLER_VERSION: v2.2.1
-  # sha256 of the released install.sh tarball asset for v2.2.1 -- pinned
+  TT_INSTALLER_VERSION: v3.4.0
+  # sha256 of the released install.sh tarball asset for v3.4.0 -- pinned
   # so the install-phase cannot silently shift if upstream re-tags.
-  TT_INSTALLER_SHA256: 2fe18ca0197f0f8ebcfb93a550dbb80a441a72697e97a6f4cf55c7f5dddeb036
-  # sha256 of install.m4 at refs/tags/v2.2.1 -- the source the patches
+  TT_INSTALLER_SHA256: 7db71e11ba5ada508377f58c8afee187422a5c4629c11be873a881d17c805d3c
+  # sha256 of install.m4 at refs/tags/v3.4.0 -- the source the patches
   # in patches/<distro>/installer/ are written against. If this hash
   # changes the patches need re-validating.
-  TT_INSTALLER_M4_SHA256: 069f03b139c9870d2ab99a14d5975bea8f9136ce83382e2b76597347f0d8e190
+  TT_INSTALLER_M4_SHA256: 4f75260cd94d8aa878f0f0a702d26beb58680e0d7cc8a46d26d3c93e85a235ae
 
 # Only one run per target selection at a time.  Runs are not cancelled because
 # a full matrix is expensive and partial results are still useful for debugging.
