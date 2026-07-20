@@ -164,7 +164,7 @@ import re
 import sys
 
 _BLOCK = re.compile(
-    r"^install_tt_repos \(\) \{.*?^^\}\n",
+    r"^install_tt_repos \(\) \{.*?^\}\n",
     re.DOTALL | re.MULTILINE,
 )
 
