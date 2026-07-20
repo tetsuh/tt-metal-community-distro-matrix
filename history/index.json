@@ -1,10 +1,10 @@
 {
   "runs": [
     {
-      "recorded_at": "2026-07-19T19:28:27Z",
-      "run_dir": "runs/29698979699",
-      "run_id": "29698979699",
-      "run_url": "https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/29698979699",
+      "recorded_at": "2026-07-20T03:34:10Z",
+      "run_dir": "runs/29712924802",
+      "run_id": "29712924802",
+      "run_url": "https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/29712924802",
       "schema_version": 1,
       "target_count": 9,
       "targets": [
@@ -102,7 +102,7 @@
           "distro": "debian",
           "failure_stage": "na",
           "install_patch_count": 1,
-          "install_status_patched": "success",
+          "install_status_patched": "failure",
           "install_status_vanilla": "success",
           "patch_count": 4,
           "runtime_failure_stage": "na",
@@ -2694,5 +2694,5 @@
     }
   ],
   "schema_version": 1,
-  "updated_at": "2026-07-19T19:28:27Z"
+  "updated_at": "2026-07-20T03:34:10Z"
 }
