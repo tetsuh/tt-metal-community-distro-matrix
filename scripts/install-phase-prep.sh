@@ -2,9 +2,13 @@
 # Generate two install.sh variants for the install-phase verification:
 #
 #   /tmp/install-vanilla.sh   exact released install.sh (pristine upstream)
-#   /tmp/install-patched.sh   regenerated from install.m4 with this
-#                             repo's patches/<distro>/installer/*.patch
-#                             applied
+#   /tmp/install-patched.sh   released install.sh with the
+#                             install_tt_repos block replaced by the
+#                             patched version regenerated from
+#                             install.m4 via argbash (the rest of the
+#                             released install.sh, including the
+#                             build-time-inlined ttis.sh helpers, is
+#                             preserved verbatim)
 #
 # Usage:
 #   scripts/install-phase-prep.sh <distro> <installer_version> \
@@ -139,9 +143,58 @@ PY
   cp "${stage}/install.m4" "${stage}/install.m4.patched"
   echo "::endgroup::"
 
-  echo "::group::Regenerate install-patched.sh"
-  "${argbash_bin}" "${stage}/install.m4.patched" -o "${out_dir}/install-patched.sh"
+  echo "::group::Splice patched install_tt_repos into released install.sh"
+  # tt-installer v3.1.0+ inlines ttis.sh into install.sh at build time
+  # (upstream scripts/inline-ttis.sh), so install.m4 alone can no longer
+  # reproduce a working install.sh via argbash -- a fully regenerated
+  # script lacks the inlined helpers (e.g. ttis_import_versions) and
+  # aborts with rc=127 once the installer reaches the golden-versions
+  # fetch. Keep the released install.sh (helpers already inlined) and
+  # replace only the install_tt_repos block -- the sole function our
+  # patches touch -- with the patched version produced from the patched
+  # install.m4. The pristine parity check above guarantees argbash
+  # reproduces that block byte-for-byte, so splicing it back into the
+  # released script is exact.
+  "${argbash_bin}" "${stage}/install.m4.patched" -o "${stage}/install.regen.patched.sh"
+  python3 - \
+    "${stage}/install.sh" \
+    "${stage}/install.regen.patched.sh" \
+    "${out_dir}/install-patched.sh" <<'PY'
+import re
+import sys
+
+_BLOCK = re.compile(
+    r"^install_tt_repos \(\) \{.*?^^\}\n",
+    re.DOTALL | re.MULTILINE,
+)
+
+def locate(text, path):
+    m = _BLOCK.search(text)
+    if not m:
+        print(f"::error::install_tt_repos block not found in {path}", file=sys.stderr)
+        sys.exit(2)
+    return m.span()
+
+released_path, patched_regen_path, out_path = sys.argv[1:4]
+released = open(released_path, encoding="utf-8").read()
+patched_regen = open(patched_regen_path, encoding="utf-8").read()
+
+r_start, r_end = locate(released, released_path)
+p_start, p_end = locate(patched_regen, patched_regen_path)
+
+spliced = released[:r_start] + patched_regen[p_start:p_end] + released[r_end:]
+open(out_path, "w", encoding="utf-8").write(spliced)
+print(
+    f"spliced install_tt_repos: released[{r_start}:{r_end}] "
+    f"<- patched_regen[{p_start}:{p_end}]"
+)
+PY
   chmod +x "${out_dir}/install-patched.sh"
+  # Syntax-check the spliced script before handing it to the leg runner.
+  if ! bash -n "${out_dir}/install-patched.sh"; then
+    echo "::error::spliced install-patched.sh failed bash -n syntax check"
+    exit 1
+  fi
   echo "patched install.sh size: $(wc -c <"${out_dir}/install-patched.sh") bytes"
   echo "::endgroup::"
 fi

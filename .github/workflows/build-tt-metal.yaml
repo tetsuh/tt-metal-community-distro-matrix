@@ -357,8 +357,8 @@ jobs:
         # Run install-phase verification on every wired-up OS. The prep
         # step downloads the released install.sh (pinned by sha256) and,
         # for OSes with patches under patches/<distro>/installer/,
-        # regenerates install.sh from install.m4 with those patches
-        # applied via argbash.
+        # splices the patched install_tt_repos block (regenerated from
+        # install.m4 via argbash) into the released install.sh.
         if: matrix.target_os == 'debian-12' || matrix.target_os == 'debian-13' || matrix.target_os == 'rocky-9' || matrix.target_os == 'rocky-10' || matrix.target_os == 'linuxmint-21.3' || matrix.target_os == 'linuxmint-22.1' || matrix.target_os == 'linuxmint-22.2' || matrix.target_os == 'linuxmint-22.3' || matrix.target_os == 'ubuntu-26.04'
         env:
           INSTALLER_VERSION:    ${{ env.TT_INSTALLER_VERSION }}
