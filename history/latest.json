@@ -1,8 +1,8 @@
 {
-  "recorded_at": "2026-07-20T09:22:06Z",
-  "run_dir": "runs/29727940331",
-  "run_id": "29727940331",
-  "run_url": "https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/29727940331",
+  "recorded_at": "2026-07-20T12:23:29Z",
+  "run_dir": "runs/29738506205",
+  "run_id": "29738506205",
+  "run_url": "https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/29738506205",
   "schema_version": 1,
   "target_count": 9,
   "targets": [
@@ -137,7 +137,7 @@
       "failure_stage": "na",
       "install_patch_count": 0,
       "install_status_patched": "na",
-      "install_status_vanilla": "success",
+      "install_status_vanilla": "failure",
       "patch_count": 2,
       "runtime_failure_stage": "na",
       "runtime_python_version": "3.12",
@@ -171,5 +171,5 @@
   ],
   "tt_metal_ref": "main",
   "tt_metal_repo": "tenstorrent/tt-metal",
-  "tt_metal_sha": "c517df0b1706d4e2ddccbe3b4c029da2354de8dc"
+  "tt_metal_sha": "53531e13fbdcd21a27aa740194c5d6e40c78e3c1"
 }
