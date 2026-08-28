@@ -76,11 +76,26 @@ In addition we use two informal trailers in the body:
 | `debian/0002-...install_llvm...patch` | Pending |
 | `debian/0003-...software-properties...patch` | Pending |
 | `linuxmint/0001-...toolchain-ppa.patch`      | Pending |
+| `linuxmint/0003-...preseed-llvm-key.patch` | Pending |
 | `rocky/0002-...unversioned-clang...patch` | Pending |
 | `ubuntu/0001-...skip-llvm-kitware-on-resolute...patch` | Pending |
 | `ubuntu/0002-...cmake4...patch`          | Pending     |
+| `ubuntu/0004-...check-clang-before-download...patch` | Pending |
 
 The compatibility table in the top-level `README.md` shows, for each
 distro, both the *vanilla* result (no patches) and the *with-patches*
 result, so readers can see at a glance which distros require local
 patches and how many.
+
+## Issue #86 construction pin
+
+The Issue #86 patches below were constructed against tt-metal
+`c464cb750864ccaba58083723a4194989d540776`:
+
+- `ubuntu/0004-install_llvm-check-clang-before-download.patch`
+- `linuxmint/0003-prep_ubuntu_system-preseed-llvm-key.patch`
+
+Both are currently `Upstream-Status: Pending`. Their narrow source context is
+intentional: if the pinned upstream path drifts or an equivalent upstream fix
+lands, patch application must fail so the patch can be refreshed or retired
+rather than being silently double-applied.

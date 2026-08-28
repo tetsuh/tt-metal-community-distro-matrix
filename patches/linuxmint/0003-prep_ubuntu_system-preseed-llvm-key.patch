@@ -1,0 +1,78 @@
+From cbda97b2e68f0519767f52278994c3212c9e7eef Mon Sep 17 00:00:00 2001
+From: Tetsuya Hayashi <tetsuh@example.invalid>
+Date: Fri, 28 Aug 2026 22:53:13 +0900
+Subject: [PATCH] prep_ubuntu_system: preseed LLVM key on noble derivatives
+
+Linux Mint 22.x uses Ubuntu noble repositories. Its prep phase already downloads the LLVM signing key, but llvm.sh later fetches the same key again. Preseed the valid armored key at the path llvm.sh checks and retain a validated dearmored keyring for apt, using one bounded IPv4 download and atomic replacement so a transient network or validation failure cannot damage existing trust material.
+
+Distro-Scope: linuxmint-22.1, linuxmint-22.2, linuxmint-22.3
+Upstream-Status: Pending
+---
+ install_dependencies.sh | 53 ++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 47 insertions(+), 6 deletions(-)
+
+diff --git a/install_dependencies.sh b/install_dependencies.sh
+index 6dc561e9..1a695909 100755
+--- a/install_dependencies.sh
++++ b/install_dependencies.sh
+@@ -274,13 +274,54 @@ prep_ubuntu_system() {
+     apt-get update
+     apt-get install -y --no-install-recommends ca-certificates gpg lsb-release wget software-properties-common gnupg jq
+ 
+-    # Add LLVM repository for Clang 17
++    # Add LLVM repository for Clang 17.  Linux Mint 22.x is based on Ubuntu
++    # noble; preseed the key in the format llvm.sh expects so its later
++    # download_key() call does not repeat an unreliable network request.
+     local llvm_keyring="/usr/share/keyrings/llvm-snapshot.gpg"
+-    local llvm_keyring_tmp
+-    llvm_keyring_tmp="$(mktemp "${llvm_keyring}.XXXXXX")"
+-    ( set -o pipefail; wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor --batch --yes --no-tty -o "$llvm_keyring_tmp" )
+-    chmod 0644 "$llvm_keyring_tmp"
+-    mv -f "$llvm_keyring_tmp" "$llvm_keyring"
++    local llvm_trusted_key="/etc/apt/trusted.gpg.d/apt.llvm.org.asc"
++    if [ "$UBUNTU_CODENAME" = "noble" ]; then
++        local llvm_key_is_valid=0
++        if [ -s "$llvm_trusted_key" ] && [ -s "$llvm_keyring" ] \
++            && grep -q '^-----BEGIN PGP PUBLIC KEY BLOCK-----$' "$llvm_trusted_key" \
++            && gpg --batch --quiet --show-keys "$llvm_trusted_key" >/dev/null 2>&1 \
++            && gpg --batch --quiet --no-default-keyring --keyring "$llvm_keyring" --list-keys >/dev/null 2>&1; then
++            llvm_key_is_valid=1
++        fi
++
++        if [ "$llvm_key_is_valid" -eq 1 ]; then
++            echo "[INFO] Valid LLVM apt key already exists; skipping key fetch (noble preseed)."
++        else
++            local llvm_key_ascii_tmp llvm_keyring_tmp llvm_trusted_key_tmp
++            llvm_key_ascii_tmp="$(mktemp "${TMPDIR:-/tmp}/apt.llvm.org.asc.XXXXXX")"
++            llvm_keyring_tmp="$(mktemp "${llvm_keyring}.XXXXXX")"
++            llvm_trusted_key_tmp="$(mktemp "${llvm_trusted_key}.XXXXXX")"
++            if ! wget -4 --connect-timeout=10 --read-timeout=15 --tries=3 --waitretry=1 --retry-connrefused \
++                -O "$llvm_key_ascii_tmp" https://apt.llvm.org/llvm-snapshot.gpg.key; then
++                rm -f "$llvm_key_ascii_tmp" "$llvm_keyring_tmp" "$llvm_trusted_key_tmp"
++                echo "[ERROR] Failed to fetch the LLVM apt key over IPv4." >&2
++                return 1
++            fi
++            if ! grep -q '^-----BEGIN PGP PUBLIC KEY BLOCK-----$' "$llvm_key_ascii_tmp" \
++                || ! gpg --batch --yes --no-tty --dearmor -o "$llvm_keyring_tmp" "$llvm_key_ascii_tmp"; then
++                rm -f "$llvm_key_ascii_tmp" "$llvm_keyring_tmp" "$llvm_trusted_key_tmp"
++                echo "[ERROR] Downloaded LLVM apt key is not a valid armored key." >&2
++                return 1
++            fi
++            chmod 0644 "$llvm_keyring_tmp"
++            cp -- "$llvm_key_ascii_tmp" "$llvm_trusted_key_tmp"
++            chmod 0644 "$llvm_trusted_key_tmp"
++            mv -f "$llvm_trusted_key_tmp" "$llvm_trusted_key"
++            mv -f "$llvm_keyring_tmp" "$llvm_keyring"
++            rm -f "$llvm_key_ascii_tmp"
++            echo "[INFO] LLVM apt key preseeded for noble (IPv4-bounded fetch)."
++        fi
++    else
++        local llvm_keyring_tmp
++        llvm_keyring_tmp="$(mktemp "${llvm_keyring}.XXXXXX")"
++        ( set -o pipefail; wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor --batch --yes --no-tty -o "$llvm_keyring_tmp" )
++        chmod 0644 "$llvm_keyring_tmp"
++        mv -f "$llvm_keyring_tmp" "$llvm_keyring"
++    fi
+     echo "deb [signed-by=$llvm_keyring] https://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-17 main" | tee /etc/apt/sources.list.d/llvm-17.list
+     # Also v20
+     echo "deb [signed-by=$llvm_keyring] https://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-20 main" | tee /etc/apt/sources.list.d/llvm-20.list
