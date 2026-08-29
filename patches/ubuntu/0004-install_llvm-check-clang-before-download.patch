@@ -1,0 +1,46 @@
+From 041f5a85e7e1f0566012ff7fc0f5873ff6a68bab Mon Sep 17 00:00:00 2001
+From: Tetsuya Hayashi <tetsu.h@gmail.com>
+Date: Fri, 28 Aug 2026 22:53:13 +0900
+Subject: [PATCH] install_llvm: check for clang-20 before downloading llvm.sh
+
+On Ubuntu 26.04 runners, clang-20 can already be installed while apt.llvm.org resolves to an unreachable IPv6 address. Check for the required compiler before creating a temporary directory or requesting llvm.sh, preserving the upstream installation path when clang-20 is absent.
+
+Distro-Scope: ubuntu-26.04
+Upstream-Status: Pending
+---
+ install_dependencies.sh | 18 +++++++++++-------
+ 1 file changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/install_dependencies.sh b/install_dependencies.sh
+index 6dc561e9..48728de6 100755
+--- a/install_dependencies.sh
++++ b/install_dependencies.sh
+@@ -390,17 +390,21 @@ install_llvm() {
+ 
+     # Install LLVM 20:
+     # - clang-20: default toolchain for tt-metal (build_metal.sh) and tt-train
++    # Check before downloading llvm.sh.  Some runners can resolve apt.llvm.org
++    # only to an unreachable IPv6 address, and a preinstalled clang-20 makes
++    # that request unnecessary.
++    echo "[INFO] Checking if LLVM 20 is already installed..."
++    if command -v clang-20 &> /dev/null; then
++        echo "[INFO] LLVM 20 is already installed. Skipping installation and llvm.sh download."
++        return
++    fi
++
+     TEMP_DIR=$(mktemp -d)
+     wget -P $TEMP_DIR https://apt.llvm.org/llvm.sh
+     chmod u+x $TEMP_DIR/llvm.sh
+ 
+-    echo "[INFO] Checking if LLVM 20 is already installed..."
+-    if command -v clang-20 &> /dev/null; then
+-        echo "[INFO] LLVM 20 is already installed. Skipping installation."
+-    else
+-        echo "[INFO] Installing LLVM 20..."
+-        $TEMP_DIR/llvm.sh 20
+-    fi
++    echo "[INFO] Installing LLVM 20..."
++    $TEMP_DIR/llvm.sh 20
+ 
+     rm -rf "$TEMP_DIR"
+ }
