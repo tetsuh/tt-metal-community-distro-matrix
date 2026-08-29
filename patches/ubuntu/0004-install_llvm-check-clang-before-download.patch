@@ -1,5 +1,5 @@
 From 041f5a85e7e1f0566012ff7fc0f5873ff6a68bab Mon Sep 17 00:00:00 2001
-From: Tetsuya Hayashi <tetsuh@example.invalid>
+From: Tetsuya Hayashi <tetsu.h@gmail.com>
 Date: Fri, 28 Aug 2026 22:53:13 +0900
 Subject: [PATCH] install_llvm: check for clang-20 before downloading llvm.sh
 
