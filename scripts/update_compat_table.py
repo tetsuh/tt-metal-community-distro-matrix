@@ -176,6 +176,9 @@ def history_summary(data: dict) -> dict:
         "runtime_smoke_target": data.get("runtime_smoke_target", ""),
         "runtime_skip_reason": data.get("runtime_skip_reason", ""),
         "runtime_python_version": data.get("runtime_python_version", ""),
+        "runtime_ttsim_python_version": data.get(
+            "runtime_ttsim_python_version", ""
+        ),
     }
 
 
