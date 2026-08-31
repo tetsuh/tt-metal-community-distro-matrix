@@ -439,6 +439,9 @@ jobs:
           mkdir -p logs ttsim-cache
           echo "::group::Experimental ttsim runtime smoke"
           set +e
+          # One retry covers transient infra failures (apt.llvm.org flakes,
+          # registry hiccups) so they do not mask the runtime signal itself.
+          run_runtime_docker() {
           docker run --rm \
             -v "${PWD}/tt-metal:/workspace/tt-metal" \
             -v "${PWD}/scripts:/workspace/scripts:ro" \
@@ -499,8 +502,16 @@ jobs:
               ttsim_python_version="$(python3 -c "import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}\")")"
               echo "__TTMCDM_TTSIM_PYTHON_VERSION=${ttsim_python_version}"
               bash /workspace/scripts/ttsim-smoke.sh /workspace/tt-metal
-            ' 2>&1 | tee logs/runtime.log
+            '
+          }
+          run_runtime_docker 2>&1 | tee logs/runtime.log
           runtime_rc=${PIPESTATUS[0]}
+          if [ "${runtime_rc}" -ne 0 ]; then
+            echo "::warning::experimental ttsim runtime smoke failed on attempt 1 (rc=${runtime_rc}); retrying once"
+            mv logs/runtime.log logs/runtime-attempt1.log
+            run_runtime_docker 2>&1 | tee logs/runtime.log
+            runtime_rc=${PIPESTATUS[0]}
+          fi
           set -e
           echo "__TTMCDM_RUNTIME_RC=${runtime_rc}" | tee -a logs/runtime.log
           runtime_marker_status="$(sed -n 's/^__TTMCDM_RUNTIME_STATUS=//p' logs/runtime.log | tail -n1)"
