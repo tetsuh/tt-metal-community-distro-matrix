@@ -1,0 +1,107 @@
+From e32b7c805d67752dc1ee5cb63cb9b4f4b2f9b097 Mon Sep 17 00:00:00 2001
+From: Tetsuya Hayashi <tetsu.h@gmail.com>
+Date: Mon, 31 Aug 2026 22:01:21 +0900
+Subject: [PATCH] install_llvm: pin wget to IPv4 and retry apt.llvm.org fetches
+
+On CI containers apt.llvm.org intermittently resolves only to an
+unreachable IPv6 address (issue #86).  Every wget against it then
+fails with 'Network is unreachable' (deps rc=4, observed on
+debian-13 and linuxmint-21.3), and llvm.sh's internal repository
+probe (a wget HEAD request against the repository URL) fails the same
+way but reports a misleading error:
+
+  [error] Distribution 'linuxmint' in version '22.1 (Xia)' is not
+  supported by this script.
+
+Pin wget to IPv4 via /etc/wgetrc early in main() so it covers every
+download made by this script and its children (the LLVM signing key
+in prep_ubuntu_system, llvm.sh itself, and llvm.sh's internal
+fetches -- llvm.sh invokes plain wget, so the wgetrc is the only hook
+that reaches those).  Retry the llvm.sh download and installation
+once so a single transient failure does not fail the whole dependency
+install, and move the clang-20 check before the download so a
+preinstalled toolchain skips the network entirely.
+
+Distro-Scope: linuxmint-22.1, linuxmint-22.2, linuxmint-22.3, linuxmint-21.3, debian-12, debian-13
+---
+ install_dependencies.sh | 52 +++++++++++++++++++++++++++++++++++------
+ 1 file changed, 45 insertions(+), 7 deletions(-)
+
+diff --git a/install_dependencies.sh b/install_dependencies.sh
+index 6dc561e94e..f9f26d77c2 100755
+--- a/install_dependencies.sh
++++ b/install_dependencies.sh
+@@ -390,18 +390,46 @@ install_llvm() {
+ 
+     # Install LLVM 20:
+     # - clang-20: default toolchain for tt-metal (build_metal.sh) and tt-train
+-    TEMP_DIR=$(mktemp -d)
+-    wget -P $TEMP_DIR https://apt.llvm.org/llvm.sh
+-    chmod u+x $TEMP_DIR/llvm.sh
+-
++    #
++    # Check before downloading llvm.sh: a preinstalled clang-20 makes the
++    # download (and llvm.sh's own network access) unnecessary.  Transient
++    # download or installation failures are retried once so a single
++    # flaky fetch does not fail the whole dependency install.
+     echo "[INFO] Checking if LLVM 20 is already installed..."
+     if command -v clang-20 &> /dev/null; then
+         echo "[INFO] LLVM 20 is already installed. Skipping installation."
+-    else
+-        echo "[INFO] Installing LLVM 20..."
+-        $TEMP_DIR/llvm.sh 20
++        return
+     fi
+ 
++    TEMP_DIR=$(mktemp -d)
++    for attempt in 1 2; do
++        if wget -P "$TEMP_DIR" https://apt.llvm.org/llvm.sh; then
++            break
++        fi
++        if [ "$attempt" -eq 2 ]; then
++            echo "[ERROR] Failed to download llvm.sh from apt.llvm.org" >&2
++            rm -rf "$TEMP_DIR"
++            return 1
++        fi
++        echo "[WARNING] llvm.sh download failed; retrying..." >&2
++        sleep 5
++    done
++    chmod u+x "$TEMP_DIR/llvm.sh"
++
++    echo "[INFO] Installing LLVM 20..."
++    for attempt in 1 2; do
++        if "$TEMP_DIR/llvm.sh" 20; then
++            break
++        fi
++        if [ "$attempt" -eq 2 ]; then
++            echo "[ERROR] Failed to install LLVM 20 via llvm.sh" >&2
++            rm -rf "$TEMP_DIR"
++            return 1
++        fi
++        echo "[WARNING] llvm.sh installation failed; retrying..." >&2
++        sleep 5
++    done
++
+     rm -rf "$TEMP_DIR"
+ }
+ 
+@@ -579,6 +607,16 @@ main() {
+         exit 1
+     fi
+ 
++    # apt.llvm.org intermittently resolves only to an unreachable IPv6
++    # address on CI containers, making every wget against it fail with
++    # 'Network is unreachable'.  Pin wget to IPv4 for every download made
++    # by this script and its children (LLVM signing key, llvm.sh itself,
++    # SFPI archives).  llvm.sh invokes plain wget for its own fetches, so
++    # /etc/wgetrc is the only hook that reaches those.
++    if ! grep -qs '^inet4_only' /etc/wgetrc; then
++        echo "inet4_only = on" >> /etc/wgetrc
++    fi
++
+     validate=0
+     docker=0
+     distributed=1
+-- 
+2.43.0
+
