@@ -1,0 +1,64 @@
+From d4ac8adc8689b35cf7597288857d0321e2290b95 Mon Sep 17 00:00:00 2001
+From: Tetsuya Hayashi <tetsu.h@gmail.com>
+Date: Mon, 31 Aug 2026 21:46:39 +0900
+Subject: [PATCH] tt-llk tests: detect the package manager in external env
+ setup
+
+The external testing environment bootstrap unconditionally uses
+'sudo apt-get' for its system package install step.  That blocks
+hardwareless ttsim smoke runs on Red Hat family distros (rocky), where
+apt-get is not available, with:
+
+  sudo: apt-get: command not found
+
+Detect the package manager before installing the setup prerequisites
+(apt-get, dnf, or yum) so the matrix can surface the real compatibility
+problems that remain beyond the preflight checks.  Package names are
+mapped to their dnf/yum equivalents; no behavior changes on
+Debian-based systems.
+
+Distro-Scope: rocky-9, rocky-10 (general improvement)
+---
+ .../tests/setup_external_testing_env.sh       | 19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/tt_metal/tt-llk/tests/setup_external_testing_env.sh b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
+index cd8954a832..477c6cee56 100755
+--- a/tt_metal/tt-llk/tests/setup_external_testing_env.sh
++++ b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
+@@ -40,6 +40,21 @@ check_python_version() {
+     echo "Supported Python version detected: $PYTHON_VERSION (minimum: $PYTHON_MIN_VERSION)"
+ }
+ 
++install_system_packages() {
++    echo "Updating and installing system packages..."
++    if command -v apt-get >/dev/null 2>&1; then
++        sudo apt-get update
++        sudo apt-get install -y curl cmake software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libzmq3-dev git-lfs xxd wget
++    elif command -v dnf >/dev/null 2>&1; then
++        sudo dnf install -y curl cmake gcc-c++ make yaml-cpp-devel hwloc-devel zeromq-devel git-lfs vim-common wget
++    elif command -v yum >/dev/null 2>&1; then
++        sudo yum install -y curl cmake gcc-c++ make yaml-cpp-devel hwloc-devel zeromq-devel git-lfs vim-common wget
++    else
++        echo "Error: No supported package manager found (apt-get/dnf/yum)." >&2
++        exit 1
++    fi
++}
++
+ # --- Main Script ---
+ 
+ # Parse arguments
+@@ -78,9 +93,7 @@ if [[ "$REUSE" == false || ! -d "$VENV_DIR" ]]; then
+     echo "Performing full setup..."
+ 
+     # Install system packages
+-    echo "Updating and installing system packages..."
+-    sudo apt-get update
+-    sudo apt-get install -y curl cmake software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libzmq3-dev git-lfs xxd wget
++    install_system_packages
+ 
+     # Create virtual environment
+     echo "Creating Python virtual environment..."
+-- 
+2.43.0
+

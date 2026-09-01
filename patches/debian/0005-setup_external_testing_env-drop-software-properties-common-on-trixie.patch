@@ -1,0 +1,55 @@
+From 0ccb0e860d7585a2735392d9964db4461ec4d0e1 Mon Sep 17 00:00:00 2001
+From: Tetsuya Hayashi <tetsu.h@gmail.com>
+Date: Mon, 31 Aug 2026 21:48:18 +0900
+Subject: [PATCH] tt-llk tests: drop software-properties-common on Debian 13+
+
+software-properties-common provides add-apt-repository.  It is not
+packaged on Debian 13 (trixie) or newer -- the source package was
+dropped from the Debian archive because Debian does not use PPAs -- so
+the external testing environment bootstrap fails on trixie with:
+
+  E: Unable to locate package software-properties-common
+
+The setup itself never invokes add-apt-repository, and llvm.sh only
+probes for that binary on Debian releases older than trixie, so keep
+the package on Debian 12 (bookworm) and drop it on trixie and newer.
+
+Distro-Scope: debian-13
+---
+ .../tests/setup_external_testing_env.sh       | 19 ++++++++++++++++++-
+ 1 file changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/tt_metal/tt-llk/tests/setup_external_testing_env.sh b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
+index cd8954a832..5521da556b 100755
+--- a/tt_metal/tt-llk/tests/setup_external_testing_env.sh
++++ b/tt_metal/tt-llk/tests/setup_external_testing_env.sh
+@@ -79,8 +79,25 @@ if [[ "$REUSE" == false || ! -d "$VENV_DIR" ]]; then
+ 
+     # Install system packages
+     echo "Updating and installing system packages..."
++    apt_pkgs="curl cmake software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libzmq3-dev git-lfs xxd wget"
++    # software-properties-common provides add-apt-repository.  It is not
++    # packaged on Debian 13 (trixie) or newer -- the source package was
++    # dropped from the Debian archive because Debian does not use PPAs --
++    # so installing it unconditionally fails there with:
++    #
++    #   E: Unable to locate package software-properties-common
++    #
++    # This setup does not invoke add-apt-repository itself, and llvm.sh
++    # stops probing for it on new Debian releases, so drop the package on
++    # trixie and newer only and keep it on Debian 12 (bookworm), where
++    # llvm.sh still requires it.
++    if [ -r /etc/os-release ] \
++        && grep -q '^ID=debian' /etc/os-release \
++        && grep -Eq '^VERSION_CODENAME=(trixie|forky|unstable)$' /etc/os-release; then
++        apt_pkgs=${apt_pkgs/software-properties-common/}
++    fi
+     sudo apt-get update
+-    sudo apt-get install -y curl cmake software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libzmq3-dev git-lfs xxd wget
++    sudo apt-get install -y ${apt_pkgs}
+ 
+     # Create virtual environment
+     echo "Creating Python virtual environment..."
+-- 
+2.43.0
+
