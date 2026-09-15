@@ -3,57 +3,57 @@
 <desc id="desc">Recent full-matrix patched build, installer, and runtime outcomes.</desc>
 <rect width="100%" height="100%" fill="#ffffff" rx="8"/>
 <text x="12" y="22" font-size="14" font-weight="600" text-anchor="start" fill="#24292f">Compatibility history</text>
-<text x="12" y="40" font-size="11" font-weight="400" text-anchor="start" fill="#57606a">Latest: 2026-09-08</text>
+<text x="12" y="40" font-size="11" font-weight="400" text-anchor="start" fill="#57606a">Latest: 2026-09-13</text>
 <text x="12" y="69" font-size="12" font-weight="600" text-anchor="start" fill="#24292f">Build</text>
 <text x="12" y="101" font-size="12" font-weight="600" text-anchor="start" fill="#24292f">Installer</text>
 <text x="12" y="133" font-size="12" font-weight="600" text-anchor="start" fill="#24292f">Runtime</text>
-<text x="98" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">07-05</text>
-<rect x="86" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>28750928446 build 9/9</title></rect>
-<rect x="86" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>28750928446 installer 9/9</title></rect>
-<rect x="86" y="116" width="24" height="24" rx="4" fill="#cf222e"><title>28750928446 runtime 8/9</title></rect>
-<text x="130" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">07-13</text>
-<rect x="118" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>29258581555 build 9/9</title></rect>
-<rect x="118" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>29258581555 installer 9/9</title></rect>
-<rect x="118" y="116" width="24" height="24" rx="4" fill="#cf222e"><title>29258581555 runtime 8/9</title></rect>
-<text x="162" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">07-19</text>
-<rect x="150" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>29698979699 build 9/9</title></rect>
-<rect x="150" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>29698979699 installer 9/9</title></rect>
-<rect x="150" y="116" width="24" height="24" rx="4" fill="#cf222e"><title>29698979699 runtime 8/9</title></rect>
+<text x="98" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">07-13</text>
+<rect x="86" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>29258581555 build 9/9</title></rect>
+<rect x="86" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>29258581555 installer 9/9</title></rect>
+<rect x="86" y="116" width="24" height="24" rx="4" fill="#cf222e"><title>29258581555 runtime 8/9</title></rect>
+<text x="130" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">07-19</text>
+<rect x="118" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>29698979699 build 9/9</title></rect>
+<rect x="118" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>29698979699 installer 9/9</title></rect>
+<rect x="118" y="116" width="24" height="24" rx="4" fill="#cf222e"><title>29698979699 runtime 8/9</title></rect>
+<text x="162" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">07-20</text>
+<rect x="150" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>29727940331 build 9/9</title></rect>
+<rect x="150" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>29727940331 installer 9/9</title></rect>
+<rect x="150" y="116" width="24" height="24" rx="4" fill="#2da44e"><title>29727940331 runtime 9/9</title></rect>
 <text x="194" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">07-20</text>
-<rect x="182" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>29727940331 build 9/9</title></rect>
-<rect x="182" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>29727940331 installer 9/9</title></rect>
-<rect x="182" y="116" width="24" height="24" rx="4" fill="#2da44e"><title>29727940331 runtime 9/9</title></rect>
-<text x="226" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">07-20</text>
-<rect x="214" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>29738506205 build 9/9</title></rect>
-<rect x="214" y="84" width="24" height="24" rx="4" fill="#cf222e"><title>29738506205 installer 8/9</title></rect>
-<rect x="214" y="116" width="24" height="24" rx="4" fill="#2da44e"><title>29738506205 runtime 9/9</title></rect>
-<text x="258" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">07-21</text>
-<rect x="246" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>29850552122 build 9/9</title></rect>
-<rect x="246" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>29850552122 installer 9/9</title></rect>
-<rect x="246" y="116" width="24" height="24" rx="4" fill="#2da44e"><title>29850552122 runtime 9/9</title></rect>
-<text x="290" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">07-26</text>
-<rect x="278" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>30215113453 build 9/9</title></rect>
-<rect x="278" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>30215113453 installer 9/9</title></rect>
-<rect x="278" y="116" width="24" height="24" rx="4" fill="#2da44e"><title>30215113453 runtime 9/9</title></rect>
-<text x="322" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">08-02</text>
-<rect x="310" y="52" width="24" height="24" rx="4" fill="#cf222e"><title>30761499636 build 8/9</title></rect>
-<rect x="310" y="84" width="24" height="24" rx="4" fill="#bf8700"><title>30761499636 installer 8/8</title></rect>
-<rect x="310" y="116" width="24" height="24" rx="4" fill="#bf8700"><title>30761499636 runtime 8/8</title></rect>
-<text x="354" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">08-16</text>
-<rect x="342" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>31964583841 build 9/9</title></rect>
-<rect x="342" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>31964583841 installer 9/9</title></rect>
-<rect x="342" y="116" width="24" height="24" rx="4" fill="#cf222e"><title>31964583841 runtime 8/9</title></rect>
-<text x="386" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">08-24</text>
-<rect x="374" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>32728422707 build 9/9</title></rect>
-<rect x="374" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>32728422707 installer 9/9</title></rect>
-<rect x="374" y="116" width="24" height="24" rx="4" fill="#cf222e"><title>32728422707 runtime 4/9</title></rect>
-<text x="418" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">08-31</text>
-<rect x="406" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>33448793198 build 9/9</title></rect>
-<rect x="406" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>33448793198 installer 9/9</title></rect>
-<rect x="406" y="116" width="24" height="24" rx="4" fill="#2da44e"><title>33448793198 runtime 9/9</title></rect>
-<text x="450" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">09-08</text>
-<rect x="438" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>34051709101 build 9/9</title></rect>
-<rect x="438" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>34051709101 installer 9/9</title></rect>
-<rect x="438" y="116" width="24" height="24" rx="4" fill="#2da44e"><title>34051709101 runtime 9/9</title></rect>
+<rect x="182" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>29738506205 build 9/9</title></rect>
+<rect x="182" y="84" width="24" height="24" rx="4" fill="#cf222e"><title>29738506205 installer 8/9</title></rect>
+<rect x="182" y="116" width="24" height="24" rx="4" fill="#2da44e"><title>29738506205 runtime 9/9</title></rect>
+<text x="226" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">07-21</text>
+<rect x="214" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>29850552122 build 9/9</title></rect>
+<rect x="214" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>29850552122 installer 9/9</title></rect>
+<rect x="214" y="116" width="24" height="24" rx="4" fill="#2da44e"><title>29850552122 runtime 9/9</title></rect>
+<text x="258" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">07-26</text>
+<rect x="246" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>30215113453 build 9/9</title></rect>
+<rect x="246" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>30215113453 installer 9/9</title></rect>
+<rect x="246" y="116" width="24" height="24" rx="4" fill="#2da44e"><title>30215113453 runtime 9/9</title></rect>
+<text x="290" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">08-02</text>
+<rect x="278" y="52" width="24" height="24" rx="4" fill="#cf222e"><title>30761499636 build 8/9</title></rect>
+<rect x="278" y="84" width="24" height="24" rx="4" fill="#bf8700"><title>30761499636 installer 8/8</title></rect>
+<rect x="278" y="116" width="24" height="24" rx="4" fill="#bf8700"><title>30761499636 runtime 8/8</title></rect>
+<text x="322" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">08-16</text>
+<rect x="310" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>31964583841 build 9/9</title></rect>
+<rect x="310" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>31964583841 installer 9/9</title></rect>
+<rect x="310" y="116" width="24" height="24" rx="4" fill="#cf222e"><title>31964583841 runtime 8/9</title></rect>
+<text x="354" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">08-24</text>
+<rect x="342" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>32728422707 build 9/9</title></rect>
+<rect x="342" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>32728422707 installer 9/9</title></rect>
+<rect x="342" y="116" width="24" height="24" rx="4" fill="#cf222e"><title>32728422707 runtime 4/9</title></rect>
+<text x="386" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">08-31</text>
+<rect x="374" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>33448793198 build 9/9</title></rect>
+<rect x="374" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>33448793198 installer 9/9</title></rect>
+<rect x="374" y="116" width="24" height="24" rx="4" fill="#2da44e"><title>33448793198 runtime 9/9</title></rect>
+<text x="418" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">09-08</text>
+<rect x="406" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>34051709101 build 9/9</title></rect>
+<rect x="406" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>34051709101 installer 9/9</title></rect>
+<rect x="406" y="116" width="24" height="24" rx="4" fill="#2da44e"><title>34051709101 runtime 9/9</title></rect>
+<text x="450" y="46" font-size="10" font-weight="400" text-anchor="middle" fill="#57606a">09-13</text>
+<rect x="438" y="52" width="24" height="24" rx="4" fill="#2da44e"><title>34774693006 build 9/9</title></rect>
+<rect x="438" y="84" width="24" height="24" rx="4" fill="#2da44e"><title>34774693006 installer 9/9</title></rect>
+<rect x="438" y="116" width="24" height="24" rx="4" fill="#2da44e"><title>34774693006 runtime 9/9</title></rect>
 <text x="12" y="158" font-size="10" font-weight="400" text-anchor="start" fill="#57606a">green: all known pass; red: at least one failure; amber: pass with unknowns</text>
 </svg>
