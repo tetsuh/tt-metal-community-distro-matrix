@@ -44,8 +44,10 @@ jobs:
           # Use an exact node id for the datacopy lane. The upstream TTSIM.md
           # -k smoke expression also matches the parameter name "tilize", which
           # can select zero tests with current LLK pytest ids.
+          # Upstream renamed the test functions in tenstorrent/tt-metal@06ef836b
+          # (PR #53942): test_unary_datacopy -> test_eltwise_unary_datacopy.
           - id: datacopy-fp16b
-            test_target: 'test_eltwise_unary_datacopy.py::test_unary_datacopy[formats:Float16_b->Float16_b-dest_acc:No-num_faces:1-tilize:No-input_dimensions:[64, 64]]'
+            test_target: 'test_eltwise_unary_datacopy.py::test_eltwise_unary_datacopy[formats:Float16_b->Float16_b-dest_acc:No-num_faces:1-tilize:No-input_dimensions:[64, 64]]'
             pytest_k_expr: ''
 
     steps:
