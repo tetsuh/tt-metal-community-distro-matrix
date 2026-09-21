@@ -1,8 +1,8 @@
 {
-  "recorded_at": "2026-09-13T19:25:55Z",
-  "run_dir": "runs/34774693006",
-  "run_id": "34774693006",
-  "run_url": "https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/34774693006",
+  "recorded_at": "2026-09-21T15:56:20Z",
+  "run_dir": "runs/35529156420",
+  "run_id": "35529156420",
+  "run_url": "https://github.com/tetsuh/tt-metal-community-distro-matrix/actions/runs/35529156420",
   "schema_version": 1,
   "target_count": 9,
   "targets": [
@@ -21,8 +21,8 @@
       "runtime_ttsim_python_version": "3.12.3",
       "status": "success",
       "target_os": "linuxmint-22.3",
-      "vanilla_failure_stage": "na",
-      "vanilla_status": "success",
+      "vanilla_failure_stage": "deps",
+      "vanilla_status": "failure",
       "version": "22.3"
     },
     {
@@ -40,8 +40,8 @@
       "runtime_ttsim_python_version": "3.12.3",
       "status": "success",
       "target_os": "linuxmint-22.2",
-      "vanilla_failure_stage": "deps",
-      "vanilla_status": "failure",
+      "vanilla_failure_stage": "na",
+      "vanilla_status": "success",
       "version": "22.2"
     },
     {
@@ -59,8 +59,8 @@
       "runtime_ttsim_python_version": "3.12.3",
       "status": "success",
       "target_os": "linuxmint-22.1",
-      "vanilla_failure_stage": "na",
-      "vanilla_status": "success",
+      "vanilla_failure_stage": "deps",
+      "vanilla_status": "failure",
       "version": "22.1"
     },
     {
@@ -180,5 +180,5 @@
   ],
   "tt_metal_ref": "main",
   "tt_metal_repo": "tenstorrent/tt-metal",
-  "tt_metal_sha": "03224d446cd102ec5f8acadf9bdf74f81d5fce56"
+  "tt_metal_sha": "fd80faa3b35fa6d38a92d08326205fc4168284ec"
 }
