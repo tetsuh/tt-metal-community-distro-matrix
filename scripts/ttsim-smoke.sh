@@ -17,8 +17,6 @@ TIMEOUT_SECONDS="${TTSIM_TIMEOUT_SECONDS:-300}"
 TEST_TARGET="${TTSIM_TEST_TARGET:-test_risc_compute.py::test_risc_compute}"
 PYTEST_K_EXPR="${TTSIM_PYTEST_K_EXPR:-}"
 REPORT_NAME="${TTSIM_REPORT_NAME:-ttsim-smoke}"
-TTSIM_CACHE_DIR="${TTSIM_CACHE_DIR:-${PWD}/ttsim-cache}"
-export TTSIM_CACHE_DIR="$(realpath -m "${TTSIM_CACHE_DIR}")"
 
 if [[ ! "${REPORT_NAME}" =~ ^[A-Za-z0-9._-]+$ ]]; then
     echo "ERROR: TTSIM_REPORT_NAME contains unsupported characters: ${REPORT_NAME}" >&2
@@ -33,22 +31,32 @@ echo "pytest -k expr     : ${PYTEST_K_EXPR:-<none>}"
 echo "timeout seconds    : ${TIMEOUT_SECONDS}"
 echo "report name        : ${REPORT_NAME}"
 
+# Upstream pins a release tag; the release asset metadata supplies its SHA-256.
+ttsim_repo=tenstorrent/ttsim
+version_file="${TT_METAL_DIR}/tt_metal/ttsim-version"
+if [[ ! -f "${version_file}" ]]; then
+    echo "ERROR: ttsim pin file not found: ${version_file}" >&2
+    exit 1
+fi
+ttsim_tag="$(tr -d '[:space:]' < "${version_file}")"
+if [[ -z "${ttsim_tag}" ]]; then
+    echo "ERROR: ${version_file} is empty; expected a ${ttsim_repo} release tag" >&2
+    exit 1
+fi
+echo "ttsim tag          : ${ttsim_tag}"
+
 pushd "${LLK_TESTS_DIR}" >/dev/null
 
 source ./setup_external_testing_env.sh --reuse
 
 case "${ARCHITECTURE}" in
     blackhole|bh)
-        ARCHITECTURE="blackhole"
         so_name="libttsim_bh.so"
         soc_src="../../soc_descriptors/blackhole_140_arch.yaml"
-        hash_var="ttsim_bh_so_hash"
         ;;
     wormhole|wormhole_b0|wh)
-        ARCHITECTURE="wormhole"
         so_name="libttsim_wh.so"
         soc_src="../../soc_descriptors/wormhole_b0_80_arch.yaml"
-        hash_var="ttsim_wh_so_hash"
         ;;
     *)
         echo "ERROR: unknown TTSIM_ARCHITECTURE: ${ARCHITECTURE}" >&2
@@ -56,39 +64,30 @@ case "${ARCHITECTURE}" in
         ;;
 esac
 
-source ./ttsim-version
-
-cache_dir="${TTSIM_CACHE_DIR}/${ttsim_version}/${ARCHITECTURE}"
-so_path="${cache_dir}/${so_name}"
-soc_path="${cache_dir}/soc_descriptor.yaml"
-url="${ttsim_repo}/releases/download/${ttsim_tag}/${so_name}"
-expected_hash="${!hash_var}"
-
-mkdir -p "${cache_dir}" python_tests/ttsim_results
-
-need_download=1
-if [[ -f "${so_path}" ]]; then
-    got="$("${ttsim_hashtype}sum" "${so_path}" | awk '{print $1}')"
-    if [[ "${got}" == "${expected_hash}" ]]; then
-        need_download=0
-    else
-        echo "Cached ${so_name} ${ttsim_hashtype} mismatch; re-downloading" >&2
-    fi
+api_url="https://api.github.com/repos/${ttsim_repo}/releases/tags/${ttsim_tag}"
+release_json="$(curl -fsSL --retry 5 --retry-delay 2 "${api_url}")"
+expected_digest="$(python3 -c '
+import json, sys
+for asset in json.load(sys.stdin).get("assets", []):
+    if asset.get("name") == sys.argv[1]:
+        print(asset.get("digest") or "")
+        break
+' "${so_name}" <<<"${release_json}")"
+if [[ ! "${expected_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+    echo "ERROR: no valid SHA-256 digest for ${so_name} in ${api_url}" >&2
+    exit 1
 fi
 
-if [[ "${need_download}" -eq 1 ]]; then
-    tmp="${so_path}.tmp.$$"
-    curl -fSL --retry 5 --retry-delay 2 -o "${tmp}" "${url}"
-    got="$("${ttsim_hashtype}sum" "${tmp}" | awk '{print $1}')"
-    if [[ "${got}" != "${expected_hash}" ]]; then
-        rm -f "${tmp}"
-        echo "ERROR: ${ttsim_hashtype} mismatch for ${so_name} (got=${got} expected=${expected_hash})" >&2
-        exit 1
-    fi
-    mv "${tmp}" "${so_path}"
-fi
+# The simulator is small enough to download and verify on every run.
+sim_dir="$(mktemp -d)"
+trap 'rm -rf -- "${sim_dir}"' EXIT
+so_path="${sim_dir}/${so_name}"
+url="https://github.com/${ttsim_repo}/releases/download/${ttsim_tag}/${so_name}"
+curl -fsSL --retry 5 --retry-delay 2 -o "${so_path}" "${url}"
+printf '%s  %s\n' "${expected_digest#sha256:}" "${so_path}" | sha256sum --check
 
-cp -f "${soc_src}" "${soc_path}"
+cp "${soc_src}" "${sim_dir}/soc_descriptor.yaml"
+mkdir -p python_tests/ttsim_results
 
 export TT_METAL_SIMULATOR="${so_path}"
 export TT_METAL_SLOW_DISPATCH_MODE="${TT_METAL_SLOW_DISPATCH_MODE:-1}"

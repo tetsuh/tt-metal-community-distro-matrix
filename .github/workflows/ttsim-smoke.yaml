@@ -45,9 +45,10 @@ jobs:
           # -k smoke expression also matches the parameter name "tilize", which
           # can select zero tests with current LLK pytest ids.
           # Upstream renamed the test functions in tenstorrent/tt-metal@06ef836b
-          # (PR #53942): test_unary_datacopy -> test_eltwise_unary_datacopy.
+          # (PR #53942): test_unary_datacopy -> test_eltwise_unary_datacopy, and
+          # re-parameterized num_faces -> tile_dimensions in @4feb6489 (PR #65617).
           - id: datacopy-fp16b
-            test_target: 'test_eltwise_unary_datacopy.py::test_eltwise_unary_datacopy[formats:Float16_b->Float16_b-dest_acc:No-num_faces:1-tilize:No-input_dimensions:[64, 64]]'
+            test_target: 'test_eltwise_unary_datacopy.py::test_eltwise_unary_datacopy[formats:Float16_b->Float16_b-dest_acc:No-tile_dimensions:[16, 16]-tilize:No-input_dimensions:[64, 64]]'
             pytest_k_expr: ''
 
     steps:
@@ -64,17 +65,14 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Cache ttsim and SFPI artifacts
+      - name: Cache SFPI artifacts
         uses: actions/cache@v5
         with:
-          path: |
-            ttsim-cache
-            tt-metal/tt_metal/tt-llk/tests/sfpi
-          key: ${{ runner.os }}-ttsim-smoke-${{ hashFiles('tt-metal/tt_metal/tt-llk/tests/ttsim-version', 'tt-metal/tt_metal/tt-llk/tests/sfpi-version') }}
+          path: tt-metal/tt_metal/tt-llk/tests/sfpi
+          key: ${{ runner.os }}-ttsim-smoke-sfpi-${{ hashFiles('tt-metal/tt_metal/tt-llk/tests/sfpi-version') }}
 
       - name: Run canonical ttsim smoke
         env:
-          TTSIM_CACHE_DIR: ${{ github.workspace }}/ttsim-cache
           TTSIM_ARCHITECTURE: blackhole
           TTSIM_TIMEOUT_SECONDS: '300'
           TTSIM_TEST_TARGET: ${{ matrix.smoke.test_target }}

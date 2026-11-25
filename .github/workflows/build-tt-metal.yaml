@@ -417,14 +417,12 @@ jobs:
             logs/install-patched.log \
             "${INSTALLER_VERSION}"
 
-      - name: Cache matrix ttsim artifacts
+      - name: Cache matrix SFPI artifacts
         if: steps.artifacts.outcome == 'success'
         uses: actions/cache@v5
         with:
-          path: |
-            ttsim-cache
-            tt-metal/tt_metal/tt-llk/tests/sfpi
-          key: ${{ runner.os }}-${{ matrix.target_os }}-ttsim-matrix-${{ hashFiles('tt-metal/tt_metal/tt-llk/tests/ttsim-version', 'tt-metal/tt_metal/tt-llk/tests/sfpi-version') }}
+          path: tt-metal/tt_metal/tt-llk/tests/sfpi
+          key: ${{ runner.os }}-${{ matrix.target_os }}-ttsim-matrix-sfpi-${{ hashFiles('tt-metal/tt_metal/tt-llk/tests/sfpi-version') }}
 
       - name: Run ttsim runtime smoke (experimental)
         id: runtime-smoke
@@ -436,7 +434,7 @@ jobs:
           TTSIM_TEST_TARGET: test_risc_compute.py::test_risc_compute
         run: |
           set -u
-          mkdir -p logs ttsim-cache
+          mkdir -p logs
           echo "::group::Experimental ttsim runtime smoke"
           set +e
           # One retry covers transient infra failures (apt.llvm.org flakes,
@@ -445,11 +443,9 @@ jobs:
           docker run --rm \
             -v "${PWD}/tt-metal:/workspace/tt-metal" \
             -v "${PWD}/scripts:/workspace/scripts:ro" \
-            -v "${PWD}/ttsim-cache:/workspace/ttsim-cache" \
             -w /workspace/tt-metal \
             -e TT_METAL_HOME=/workspace/tt-metal \
             -e TARGET_OS="${TARGET_OS}" \
-            -e TTSIM_CACHE_DIR=/workspace/ttsim-cache \
             -e TTSIM_ARCHITECTURE=blackhole \
             -e TTSIM_TIMEOUT_SECONDS=300 \
             -e TTSIM_TEST_TARGET="${TTSIM_TEST_TARGET}" \
