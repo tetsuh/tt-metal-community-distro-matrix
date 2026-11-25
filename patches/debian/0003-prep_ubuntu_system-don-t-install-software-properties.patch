@@ -1,58 +1,45 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Tetsuya Hayashi <tetsu.h@gmail.com>
-Date: Mon, 4 May 2026 10:00:48 +0900
-Subject: [PATCH] prep_ubuntu_system: don't install software-properties-common
- on Debian 13
+Date: Thu, 26 Nov 2026 00:51:52 +0900
+Subject: [PATCH] prep_ubuntu_system: handle Debian 13 packages
 
-software-properties-common provides /usr/bin/add-apt-repository.  On
-Debian 13 (trixie) the source package was dropped from the archive
-because Debian does not use PPAs and add-apt-repository has no useful
-purpose there; installing it unconditionally fails with:
-
-  E: Unable to locate package software-properties-common
-
-It is tempting to drop the package on every Debian release, but on
-Debian 12 (bookworm) the bundled apt.llvm.org installer (llvm.sh) still
-hard-requires add-apt-repository -- it only stops probing for it on
-"new" Debian releases (trixie and forky).  So the patch keeps
-software-properties-common in the install set everywhere except on
-Debian 13+, where it is both unavailable and unneeded.
+Drop the unavailable software-properties-common on Debian 13+. Keep IPv4 and bounded retries for LLVM wget requests after the upstream switch from llvm.sh to apt-get.
 
 Upstream-Status: Pending
-Distro-Scope: debian-13
+Distro-Scope: debian-12, debian-13
 ---
- install_dependencies.sh | 16 +++++++++++++++-
- 1 file changed, 15 insertions(+), 1 deletion(-)
+ install_dependencies.sh | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
 diff --git a/install_dependencies.sh b/install_dependencies.sh
-index 9d860a0..56af46d 100644
+index 98d4f19..751365a 100755
 --- a/install_dependencies.sh
 +++ b/install_dependencies.sh
-@@ -272,10 +272,24 @@ prep_ubuntu_system() {
+@@ -272,18 +272,24 @@ prep_ubuntu_system() {
      echo "[INFO] Preparing Ubuntu/Debian system..."
      # Update package lists and install basic tools
      apt-get update
 -    apt-get install -y --no-install-recommends ca-certificates gpg lsb-release wget software-properties-common gnupg jq
-+    # software-properties-common provides 'add-apt-repository'.  It is
-+    # not packaged on Debian 13 (trixie) -- the source package was
-+    # dropped from the Debian archive because Debian does not use
-+    # PPAs.  On Debian 13 we therefore drop the package; on Ubuntu
-+    # and on Debian 12 (bookworm) the package still exists and is
-+    # required by llvm.sh below, which probes for add-apt-repository
-+    # unless it is running on a "new" Debian (trixie+).
-+    base_pkgs="ca-certificates gpg lsb-release wget software-properties-common gnupg jq"
-+    if [ "${ID:-}" = "debian" ] && { [ "${VERSION_CODENAME:-}" = "trixie" ] || [ "${VERSION_CODENAME:-}" = "forky" ] || [ "${VERSION_CODENAME:-}" = "unstable" ]; }; then
-+	base_pkgs="ca-certificates gpg lsb-release wget gnupg jq"
-+    fi
-+    apt-get install -y --no-install-recommends $base_pkgs
++    # Debian 13+ no longer packages software-properties-common.
++    local base_pkgs=(ca-certificates gpg lsb-release wget gnupg jq)
++    case "$OS_CODENAME" in
++        trixie|forky|unstable) ;;
++        *) base_pkgs+=(software-properties-common) ;;
++    esac
++    apt-get install -y --no-install-recommends "${base_pkgs[@]}"
  
-     # Add LLVM repository for Clang 17
+     # Add LLVM repositories
      local llvm_keyring="/usr/share/keyrings/llvm-snapshot.gpg"
-+    if [ "${ID:-}" = "debian" ] && { [ "${VERSION_CODENAME:-}" = "trixie" ] || [ "${VERSION_CODENAME:-}" = "forky" ] || [ "${VERSION_CODENAME:-}" = "unstable" ]; }; then
-+	llvm_keyring="/etc/apt/trusted.gpg.d/apt.llvm.org.asc"
-+    fi
      local llvm_keyring_tmp
      llvm_keyring_tmp="$(mktemp "${llvm_keyring}.XXXXXX")"
-     ( set -o pipefail; wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor --batch --yes --no-tty -o "$llvm_keyring_tmp" )
--- 
-2.43.0
+-    ( set -o pipefail; wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor --batch --yes --no-tty -o "$llvm_keyring_tmp" )
++    ( set -o pipefail; wget -4 --timeout=15 --tries=3 --retry-connrefused -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor --batch --yes --no-tty -o "$llvm_keyring_tmp" )
+     chmod 0644 "$llvm_keyring_tmp"
+     mv -f "$llvm_keyring_tmp" "$llvm_keyring"
+     # apt.llvm.org doesn't publish v20 for newer releases (e.g. Ubuntu 26.04, whose
+     # own archive ships clang-20), and a missing repo makes apt-get update fail.
+-    if wget -q --spider "https://apt.llvm.org/$OS_CODENAME/dists/llvm-toolchain-$OS_CODENAME-20/Release"; then
++    if wget -4 -q --timeout=15 --tries=3 --retry-connrefused --spider "https://apt.llvm.org/$OS_CODENAME/dists/llvm-toolchain-$OS_CODENAME-20/Release"; then
+         echo "deb [signed-by=$llvm_keyring] https://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-20 main" | tee /etc/apt/sources.list.d/llvm-20.list
+     else
+         echo "[INFO] apt.llvm.org has no LLVM 20 repository for $OS_CODENAME; using the distro archive"
