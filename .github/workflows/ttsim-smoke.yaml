@@ -45,9 +45,10 @@ jobs:
           # -k smoke expression also matches the parameter name "tilize", which
           # can select zero tests with current LLK pytest ids.
           # Upstream renamed the test functions in tenstorrent/tt-metal@06ef836b
-          # (PR #53942): test_unary_datacopy -> test_eltwise_unary_datacopy.
+          # (PR #53942): test_unary_datacopy -> test_eltwise_unary_datacopy, and
+          # re-parameterized num_faces -> tile_dimensions in @4feb6489 (PR #65617).
           - id: datacopy-fp16b
-            test_target: 'test_eltwise_unary_datacopy.py::test_eltwise_unary_datacopy[formats:Float16_b->Float16_b-dest_acc:No-num_faces:1-tilize:No-input_dimensions:[64, 64]]'
+            test_target: 'test_eltwise_unary_datacopy.py::test_eltwise_unary_datacopy[formats:Float16_b->Float16_b-dest_acc:No-tile_dimensions:[16, 16]-tilize:No-input_dimensions:[64, 64]]'
             pytest_k_expr: ''
 
     steps:
