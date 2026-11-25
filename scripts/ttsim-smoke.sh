@@ -33,6 +33,25 @@ echo "pytest -k expr     : ${PYTEST_K_EXPR:-<none>}"
 echo "timeout seconds    : ${TIMEOUT_SECONDS}"
 echo "report name        : ${REPORT_NAME}"
 
+# Upstream moved the ttsim pin out of the LLK tests dir into
+# tt_metal/ttsim-version (a bare release tag, no per-arch hashes) in
+# tenstorrent/tt-metal@9b527ec4. The release asset's own sha256 digest
+# (recorded by GitHub for every release asset) replaces the previously
+# pinned per-arch hashes.
+TTSIM_REPO="${TTSIM_REPO:-tenstorrent/ttsim}"
+version_file="${TT_METAL_DIR}/tt_metal/ttsim-version"
+if [[ ! -f "${version_file}" ]]; then
+    echo "ERROR: ttsim pin file not found: ${version_file}" >&2
+    exit 1
+fi
+ttsim_tag="$(tr -d '[:space:]' < "${version_file}")"
+if [[ -z "${ttsim_tag}" ]]; then
+    echo "ERROR: ${version_file} is empty; expected a ${TTSIM_REPO} release tag" >&2
+    exit 1
+fi
+echo "ttsim repo         : ${TTSIM_REPO}"
+echo "ttsim tag          : ${ttsim_tag}"
+
 pushd "${LLK_TESTS_DIR}" >/dev/null
 
 source ./setup_external_testing_env.sh --reuse
@@ -42,13 +61,11 @@ case "${ARCHITECTURE}" in
         ARCHITECTURE="blackhole"
         so_name="libttsim_bh.so"
         soc_src="../../soc_descriptors/blackhole_140_arch.yaml"
-        hash_var="ttsim_bh_so_hash"
         ;;
     wormhole|wormhole_b0|wh)
         ARCHITECTURE="wormhole"
         so_name="libttsim_wh.so"
         soc_src="../../soc_descriptors/wormhole_b0_80_arch.yaml"
-        hash_var="ttsim_wh_so_hash"
         ;;
     *)
         echo "ERROR: unknown TTSIM_ARCHITECTURE: ${ARCHITECTURE}" >&2
@@ -56,33 +73,41 @@ case "${ARCHITECTURE}" in
         ;;
 esac
 
-source ./ttsim-version
-
-cache_dir="${TTSIM_CACHE_DIR}/${ttsim_version}/${ARCHITECTURE}"
+cache_dir="${TTSIM_CACHE_DIR}/${ttsim_tag}/${ARCHITECTURE}"
 so_path="${cache_dir}/${so_name}"
 soc_path="${cache_dir}/soc_descriptor.yaml"
-url="${ttsim_repo}/releases/download/${ttsim_tag}/${so_name}"
-expected_hash="${!hash_var}"
+url="https://github.com/${TTSIM_REPO}/releases/download/${ttsim_tag}/${so_name}"
 
 mkdir -p "${cache_dir}" python_tests/ttsim_results
 
-need_download=1
 if [[ -f "${so_path}" ]]; then
-    got="$("${ttsim_hashtype}sum" "${so_path}" | awk '{print $1}')"
-    if [[ "${got}" == "${expected_hash}" ]]; then
-        need_download=0
-    else
-        echo "Cached ${so_name} ${ttsim_hashtype} mismatch; re-downloading" >&2
+    # A cached .so is only ever moved into place after its digest check
+    # passed, so its presence under the tag's directory is enough
+    # (same convention as upstream run_ttsim_regression.sh).
+    echo "Using cached ${so_name} for ${ttsim_tag} (${ARCHITECTURE})"
+else
+    api_url="https://api.github.com/repos/${TTSIM_REPO}/releases/tags/${ttsim_tag}"
+    auth=()
+    if [[ -n "${GH_TOKEN:-}" ]]; then
+        auth=(-H "Authorization: Bearer ${GH_TOKEN}")
     fi
-fi
-
-if [[ "${need_download}" -eq 1 ]]; then
+    release_json="$(curl -fsSL --retry 5 --retry-delay 2 ${auth[@]+"${auth[@]}"} "${api_url}")"
+    expected_hash="$(SO_NAME="${so_name}" python3 -c '
+import json, os, sys
+for asset in json.load(sys.stdin).get("assets", []):
+    if asset.get("name") == os.environ["SO_NAME"]:
+        print((asset.get("digest") or "").removeprefix("sha256:"))
+' <<<"${release_json}")"
+    if [[ -z "${expected_hash}" ]]; then
+        echo "ERROR: no sha256 digest for ${so_name} in ${api_url}; refusing an unverified download" >&2
+        exit 1
+    fi
     tmp="${so_path}.tmp.$$"
     curl -fSL --retry 5 --retry-delay 2 -o "${tmp}" "${url}"
-    got="$("${ttsim_hashtype}sum" "${tmp}" | awk '{print $1}')"
+    got="$(sha256sum "${tmp}" | awk '{print $1}')"
     if [[ "${got}" != "${expected_hash}" ]]; then
         rm -f "${tmp}"
-        echo "ERROR: ${ttsim_hashtype} mismatch for ${so_name} (got=${got} expected=${expected_hash})" >&2
+        echo "ERROR: sha256 mismatch for ${so_name} (got=${got} expected=${expected_hash})" >&2
         exit 1
     fi
     mv "${tmp}" "${so_path}"

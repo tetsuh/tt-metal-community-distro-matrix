@@ -70,10 +70,13 @@ jobs:
           path: |
             ttsim-cache
             tt-metal/tt_metal/tt-llk/tests/sfpi
-          key: ${{ runner.os }}-ttsim-smoke-${{ hashFiles('tt-metal/tt_metal/tt-llk/tests/ttsim-version', 'tt-metal/tt_metal/tt-llk/tests/sfpi-version') }}
+          key: ${{ runner.os }}-ttsim-smoke-${{ hashFiles('tt-metal/tt_metal/ttsim-version', 'tt-metal/tt_metal/tt-llk/tests/sfpi-version') }}
 
       - name: Run canonical ttsim smoke
         env:
+          # Used by scripts/ttsim-smoke.sh to resolve the release asset
+          # digest for the tag pinned in tt_metal/ttsim-version.
+          GH_TOKEN: ${{ github.token }}
           TTSIM_CACHE_DIR: ${{ github.workspace }}/ttsim-cache
           TTSIM_ARCHITECTURE: blackhole
           TTSIM_TIMEOUT_SECONDS: '300'

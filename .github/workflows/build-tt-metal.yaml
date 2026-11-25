@@ -424,7 +424,7 @@ jobs:
           path: |
             ttsim-cache
             tt-metal/tt_metal/tt-llk/tests/sfpi
-          key: ${{ runner.os }}-${{ matrix.target_os }}-ttsim-matrix-${{ hashFiles('tt-metal/tt_metal/tt-llk/tests/ttsim-version', 'tt-metal/tt_metal/tt-llk/tests/sfpi-version') }}
+          key: ${{ runner.os }}-${{ matrix.target_os }}-ttsim-matrix-${{ hashFiles('tt-metal/tt_metal/ttsim-version', 'tt-metal/tt_metal/tt-llk/tests/sfpi-version') }}
 
       - name: Run ttsim runtime smoke (experimental)
         id: runtime-smoke
@@ -457,6 +457,7 @@ jobs:
             -e TTSIM_UBUNTU_26_04_PYTHON="${TTSIM_UBUNTU_26_04_PYTHON}" \
             -e TTSIM_UV_VERSION="${TTSIM_UV_VERSION}" \
             -e TTSIM_UV_X86_64_SHA256="${TTSIM_UV_X86_64_SHA256}" \
+            -e GH_TOKEN="${{ github.token }}" \
             "${IMAGE_TAG}" \
             bash -lc '
               set -eux
