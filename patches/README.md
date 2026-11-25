@@ -75,34 +75,26 @@ In addition we use two informal trailers in the body:
 | `debian/0001-...sfpi...patch` | Pending |
 | `debian/0002-...install_llvm...patch` | Pending |
 | `debian/0003-...software-properties...patch` | Pending |
-| `debian/0004-...install_llvm...ipv4...patch` | Pending |
 | `debian/0005-...software-properties...trixie...patch` | Pending |
 | `linuxmint/0001-...toolchain-ppa.patch`      | Pending |
-| `linuxmint/0003-...preseed-llvm-key.patch` | Pending |
-| `linuxmint/0004-...install_llvm...ipv4...patch` | Pending |
+| `linuxmint/0003-...bound-llvm-wget.patch` | Pending |
 | `rocky/0001-...detect-package-manager...patch` | Pending |
 | `rocky/0002-...unversioned-clang...patch` | Pending |
-| `ubuntu/0001-...skip-llvm-kitware-on-resolute...patch` | Pending |
+| `ubuntu/0001-...use-distro-cmake-on-resolute.patch` | Pending |
 | `ubuntu/0002-...cmake4...patch`          | Pending     |
-| `ubuntu/0004-...check-clang-before-download...patch` | Pending |
 
 The compatibility table in the top-level `README.md` shows, for each
 distro, both the *vanilla* result (no patches) and the *with-patches*
 result, so readers can see at a glance which distros require local
 patches and how many.
 
-## Issue #86 construction pin
+## LLVM setup patch refresh
 
-The Issue #86 patches below were constructed against tt-metal
-`c464cb750864ccaba58083723a4194989d540776`:
-
-- `ubuntu/0004-install_llvm-check-clang-before-download.patch`
-- `linuxmint/0003-prep_ubuntu_system-preseed-llvm-key.patch`
-
-Both are currently `Upstream-Status: Pending`. Their narrow source context is
-intentional: if the pinned upstream path drifts or an equivalent upstream fix
-lands, patch application must fail so the patch can be refreshed or retired
-rather than being silently double-applied.
+The Debian, Linux Mint, and Ubuntu `prep_ubuntu_system` changes were refreshed
+against tt-metal `26c3782109cf219ea9d61b9ba5c6ab945e06290d` for issue #102.
+Upstream now installs LLVM with apt rather than `llvm.sh`, so the old key
+preseed and `install_llvm` download workarounds were retired. Debian and Mint
+still use IPv4 and bounded retries for the remaining apt.llvm.org wget calls.
 
 ## Runtime ttsim patches construction pin
 
@@ -110,13 +102,9 @@ The runtime ttsim failure patches below were constructed against tt-metal
 `d04395ed862b4c65eb6877000c40200f456cb74e`:
 
 - `rocky/0001-setup_external_testing_env-detect-package-manager.patch`
-- `linuxmint/0004-install_llvm-pin-wget-to-ipv4-and-retry.patch`
-- `debian/0004-install_llvm-pin-wget-to-ipv4-and-retry.patch`
 - `debian/0005-setup_external_testing_env-drop-software-properties-common-on-trixie.patch`
 
-`debian/0004` and `linuxmint/0004` carry the same diff and extend the issue
-#86 mitigation to the remaining apt.llvm.org fetch sites. The retired
-`0001-tt-llk-tests-accept-python-3.10-and-newer.patch` bundles contained both
+The retired `0001-tt-llk-tests-accept-python-3.10-and-newer.patch` bundles contained both
 the Python version relaxation and dnf/yum detection; upstream `d515a8631fde`
 (#53948) merged only the former, so the package manager detection half was
 re-introduced here standalone. Same narrow-context rules as above apply.

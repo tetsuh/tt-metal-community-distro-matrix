@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tetsuya Hayashi <tetsu.h@gmail.com>
+Date: Thu, 26 Nov 2026 00:51:52 +0900
+Subject: [PATCH] prep_ubuntu_system: bound LLVM wget requests on Linux Mint
+
+Avoid the CI IPv6 failures tracked in issue #86. Upstream no longer invokes llvm.sh, so there is no need to preseed its key or change /etc/wgetrc.
+
+Upstream-Status: Pending
+Distro-Scope: linuxmint-21.3, linuxmint-22.x
+---
+ install_dependencies.sh | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/install_dependencies.sh b/install_dependencies.sh
+index 98d4f19..d2ef01d 100755
+--- a/install_dependencies.sh
++++ b/install_dependencies.sh
+@@ -278,12 +278,12 @@ prep_ubuntu_system() {
+     local llvm_keyring="/usr/share/keyrings/llvm-snapshot.gpg"
+     local llvm_keyring_tmp
+     llvm_keyring_tmp="$(mktemp "${llvm_keyring}.XXXXXX")"
+-    ( set -o pipefail; wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor --batch --yes --no-tty -o "$llvm_keyring_tmp" )
++    ( set -o pipefail; wget -4 --timeout=15 --tries=3 --retry-connrefused -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor --batch --yes --no-tty -o "$llvm_keyring_tmp" )
+     chmod 0644 "$llvm_keyring_tmp"
+     mv -f "$llvm_keyring_tmp" "$llvm_keyring"
+     # apt.llvm.org doesn't publish v20 for newer releases (e.g. Ubuntu 26.04, whose
+     # own archive ships clang-20), and a missing repo makes apt-get update fail.
+-    if wget -q --spider "https://apt.llvm.org/$OS_CODENAME/dists/llvm-toolchain-$OS_CODENAME-20/Release"; then
++    if wget -4 -q --timeout=15 --tries=3 --retry-connrefused --spider "https://apt.llvm.org/$OS_CODENAME/dists/llvm-toolchain-$OS_CODENAME-20/Release"; then
+         echo "deb [signed-by=$llvm_keyring] https://apt.llvm.org/$OS_CODENAME/ llvm-toolchain-$OS_CODENAME-20 main" | tee /etc/apt/sources.list.d/llvm-20.list
+     else
+         echo "[INFO] apt.llvm.org has no LLVM 20 repository for $OS_CODENAME; using the distro archive"
