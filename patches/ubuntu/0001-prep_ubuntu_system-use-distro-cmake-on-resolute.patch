@@ -1,9 +1,12 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Tetsuya Hayashi <tetsu.h@gmail.com>
 Date: Thu, 26 Nov 2026 00:51:52 +0900
-Subject: [PATCH] prep_ubuntu_system: use distro CMake on Ubuntu 26.04
+Subject: [PATCH] prep_ubuntu_system: use distro CMake and LLVM tools on Ubuntu 26.04
 
-Keep using the archive CMake on resolute. Upstream now selects distro LLVM 20 when the upstream pocket is absent and installs clang-tidy-23 separately, so leave repository setup intact.
+Use archive CMake on resolute. Install llvm-20 explicitly for llvm-ar-20
+and llvm-ranlib-20: the container preinstalls clang-20, but CMake needs
+these tools to build Tracy's static archive. Keep upstream LLVM repository
+and clang-tidy-23 selection unchanged.
 
 Upstream-Status: Pending
 Distro-Scope: ubuntu-26.04
@@ -12,7 +15,6 @@ Distro-Scope: ubuntu-26.04
  1 file changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/install_dependencies.sh b/install_dependencies.sh
-index 98d4f19..7d2dd98 100755
 --- a/install_dependencies.sh
 +++ b/install_dependencies.sh
 @@ -300,8 +300,10 @@ Pin: release n=llvm-toolchain-$OS_CODENAME-23
@@ -21,9 +23,9 @@ index 98d4f19..7d2dd98 100755
 
 -    # Install CMake from GitHub releases (skip in Docker, cmake provided via tool image)
 -    if [ "$docker" -ne 1 ]; then
-+    # Ubuntu 26.04 ships a supported CMake in its own archive.
++    # Use distro CMake and LLVM archive tools on Ubuntu 26.04.
 +    if [ "$docker" -ne 1 ] && [ "$OS_CODENAME" = "resolute" ]; then
-+        apt-get install -y --no-install-recommends cmake
++        apt-get install -y --no-install-recommends cmake llvm-20
 +    elif [ "$docker" -ne 1 ]; then
          local cmake_version="4.0.2"
          local cmake_installer="/tmp/cmake-${cmake_version}-installer.sh"
